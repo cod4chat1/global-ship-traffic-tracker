@@ -28,7 +28,7 @@
     {"id": "fujairah", "name": "Fujairah", "source_name": "Fujairah", "type": "port", "region": "Middle East", "lat": 25.14, "lon": 56.36},
     {"id": "ras_tanura", "name": "Ras Tanura", "source_name": "Ras Tanura", "type": "port", "region": "Middle East", "lat": 26.65, "lon": 50.16},
     {"id": "houston", "name": "Houston", "source_name": "Houston", "type": "port", "region": "North America", "lat": 29.73, "lon": -95.27},
-    {"id": "new_york_new_jersey", "name": "New Yorkâ€“New Jersey", "source_name": "New York", "type": "port", "region": "North America", "lat": 40.67, "lon": -74.05},
+    {"id": "new_york_new_jersey", "name": "New York–New Jersey", "source_name": "New York", "type": "port", "region": "North America", "lat": 40.67, "lon": -74.05},
     {"id": "los_angeles", "name": "Los Angeles", "source_name": "Los Angeles", "type": "port", "region": "North America", "lat": 33.74, "lon": -118.27},
     {"id": "long_beach", "name": "Long Beach", "source_name": "Long Beach", "type": "port", "region": "North America", "lat": 33.75, "lon": -118.22},
     {"id": "santos", "name": "Santos", "source_name": "Santos", "type": "port", "region": "South America", "lat": -23.95, "lon": -46.33},
