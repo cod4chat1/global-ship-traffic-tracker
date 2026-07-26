@@ -1,0 +1,11 @@
+{
+  "name": "ship-traffic-mvp-rendering",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@oai/artifact-tool": "^2.8.6",
+    "playwright": "^1.52.0"
+  }
+}
+
+
