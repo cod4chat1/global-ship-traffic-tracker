@@ -66,7 +66,7 @@ const unifiedRows = [...report.straits, ...report.ports]
   );
 const dashboardDataHeaders = [
   "Date", "Area type", "Region", "Area", "Actual", "7-day average",
-  "30-day average", "Bulk â€“ O&G", "Bulk â€“ non-O&G", "Container",
+  "30-day average", "Bulk – O&G", "Bulk – non-O&G", "Container",
   "Other cargo", "Unknown",
 ];
 const dashboardDataRows = unifiedRows.map((row) => [
@@ -182,8 +182,8 @@ dashboard.getRange("A19:F19").merge();
 dashboard.getRange("A19").values = [["Current vessel-category mix"]];
 dashboard.getRange("A19:F19").format = headerFormat;
 dashboard.getRange("A20:B24").values = [
-  ["Bulk â€“ oil & gas", null],
-  ["Bulk â€“ non-oil & gas", null],
+  ["Bulk – oil & gas", null],
+  ["Bulk – non-oil & gas", null],
   ["Container", null],
   ["Other cargo", null],
   ["Unknown", null],
@@ -233,14 +233,14 @@ trendChart.setPosition("H4", "N20");
 
 // Detailed source tabs.
 const straitHeaders = [
-  "Date", "Area ID", "Strait", "Region", "Total crossings", "Bulk â€“ O&G",
-  "Bulk â€“ non-O&G", "Container", "Other cargo", "Others", "Unknown",
+  "Date", "Area ID", "Strait", "Region", "Total crossings", "Bulk – O&G",
+  "Bulk – non-O&G", "Container", "Other cargo", "Others", "Unknown",
   "7d avg", "30d avg", "Change vs 7d", "Change vs 30d", "Availability",
   "Source", "Source URL",
 ];
 const portHeaders = [
-  "Date", "Area ID", "Port", "Region", "Total activity", "Bulk â€“ O&G",
-  "Bulk â€“ non-O&G", "Container", "Other cargo", "Others", "Unknown",
+  "Date", "Area ID", "Port", "Region", "Total activity", "Bulk – O&G",
+  "Bulk – non-O&G", "Container", "Other cargo", "Others", "Unknown",
   "Imports (t)", "Exports (t)", "7d avg", "30d avg", "Change vs 7d",
   "Change vs 30d", "Availability", "Source", "Source URL",
 ];
