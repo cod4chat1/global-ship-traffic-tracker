@@ -1,9 +1,9 @@
 name: Daily ship traffic update
 
-on:
+"on":
   schedule:
     - cron: "0 0 * * *"
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -70,7 +70,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const succeeded = process.env.JOB_STATUS === "success";
-            const icon = succeeded ? "âœ…" : "âŒ";
+            const icon = succeeded ? "[OK]" : "[FAILED]";
             const outcome = succeeded ? "completed successfully" : "failed";
             const runUrl =
               `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
@@ -123,5 +123,3 @@ jobs:
                 labels: ["daily-update-alerts"],
               });
             }
-
-
