@@ -60,14 +60,14 @@ def _selector_formula(value_column: str, row_number: int) -> str:
 
 def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     strait_headers = [
-        "Date", "Area ID", "Strait", "Region", "Total crossings", "Bulk â€“ O&G",
-        "Bulk â€“ non-O&G", "Container", "Other cargo", "Others", "Unknown",
+        "Date", "Area ID", "Strait", "Region", "Total crossings", "Bulk – O&G",
+        "Bulk – non-O&G", "Container", "Other cargo", "Others", "Unknown",
         "7d avg", "30d avg", "Change vs 7d", "Change vs 30d", "Availability",
         "Source", "Source URL",
     ]
     port_headers = [
-        "Date", "Area ID", "Port", "Region", "Total activity", "Bulk â€“ O&G",
-        "Bulk â€“ non-O&G", "Container", "Other cargo", "Others", "Unknown",
+        "Date", "Area ID", "Port", "Region", "Total activity", "Bulk – O&G",
+        "Bulk – non-O&G", "Container", "Other cargo", "Others", "Unknown",
         "Imports (t)", "Exports (t)", "7d avg", "30d avg", "Change vs 7d",
         "Change vs 30d", "Availability", "Source", "Source URL",
     ]
@@ -99,7 +99,7 @@ def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     )
     dashboard_headers = [
         "Date", "Area type", "Region", "Area", "Actual", "7-day average",
-        "30-day average", "Bulk â€“ O&G", "Bulk â€“ non-O&G", "Container",
+        "30-day average", "Bulk – O&G", "Bulk – non-O&G", "Container",
         "Other cargo", "Unknown",
     ]
     dashboard_rows = [
