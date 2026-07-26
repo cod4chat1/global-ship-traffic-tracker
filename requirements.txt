@@ -1,0 +1,6 @@
+# Core runtime uses only the Python standard library.
+# Install these only for Google Sheets and Drive delivery:
+google-api-python-client>=2.160,<3
+google-auth>=2.38,<3
+playwright>=1.52,<2
+
