@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+artifacts/
+state/
+.env
+*.sqlite3
+*.json.key
+service-account*.json
+
