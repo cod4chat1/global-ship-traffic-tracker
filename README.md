@@ -13,7 +13,7 @@ The live public adapter uses IMF PortWatch aggregate data:
 
 PortWatch does **not** expose live individual vessel positions. Exact counts of ships at berth, at anchor, or waiting outside a port remain marked `UNAVAILABLE` until a licensed vessel-level AIS adapter is added. Missing values are never converted to zero.
 
-## Quick start â€” offline verified demo
+## Quick start — offline verified demo
 
 Python 3.11+ and Node.js are required. Install the Node packages, then run:
 
@@ -26,7 +26,7 @@ python -m ship_traffic.cli run `
   --output-dir artifacts/demo
 ```
 
-The deterministic fixture generates 45 days of data, a SQLite database, CSV extracts, a six-tab workbook, an HTML map, and a 1440Ã—900 PNG screenshot.
+The deterministic fixture generates 45 days of data, a SQLite database, CSV extracts, a six-tab workbook, an HTML map, and a 1440×900 PNG screenshot.
 
 ## Live PortWatch run
 
@@ -80,7 +80,7 @@ Official data surfaces:
 
 8. Add `--google` to the run command.
 
-If `GOOGLE_SPREADSHEET_ID` is empty, the job creates a spreadsheet. The service account owns it, so share or move it according to your organizationâ€™s Drive policy.
+If `GOOGLE_SPREADSHEET_ID` is empty, the job creates a spreadsheet. The service account owns it, so share or move it according to your organization’s Drive policy.
 
 ## Schedule
 
@@ -99,11 +99,9 @@ The Codex desktop automation supplied with this project also runs daily at 08:00
 5. retains diagnostic artifacts for 14 days; and
 6. posts a GitHub issue notification mentioning the repository owner after every successful or failed run.
 
-Create a public GitHub repository and add these repository secrets:
+Create a public GitHub repository and add this repository secret:
 
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: the complete service-account JSON used by the rainfall tracker;
-- `GOOGLE_SPREADSHEET_ID`: the native Google Sheet ID;
-- `GOOGLE_DRIVE_FOLDER_ID`: the destination Drive folder ID.
 
 Share both the native Google Sheet and its Drive folder with the service-account email as Editor. Keep the `Daily ship traffic update alerts` issue open and subscribed. GitHub then delivers the completion mention according to your GitHub web, mobile, and email notification settings.
 
@@ -140,5 +138,5 @@ Implement `Provider.fetch()` in `src/ship_traffic/providers.py` for a licensed A
 - apply berth, anchorage, and waiting-area geofences;
 - count crossings from line-side transitions rather than point presence;
 - return `unknown` separately; and
-- comply with the providerâ€™s storage and redistribution licence.
+- comply with the provider’s storage and redistribution licence.
 
