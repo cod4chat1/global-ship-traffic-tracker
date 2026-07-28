@@ -232,11 +232,32 @@ def _upload_screenshot(drive, screenshot_path: str | Path) -> str:
         .execute()
         .get("files", [])
     )
+    if not existing and folder_id:
+        existing = (
+            drive.files()
+            .list(
+                q=(
+                    f"'{folder_id}' in parents and "
+                    "name contains 'Global_Shipping_Snapshot_' and "
+                    "mimeType = 'image/png' and trashed = false"
+                ),
+                fields="files(id,webViewLink)",
+                orderBy="modifiedTime desc",
+                pageSize=1,
+            )
+            .execute()
+            .get("files", [])
+        )
     media = MediaFileUpload(str(path), mimetype="image/png", resumable=False)
     if existing:
         uploaded = (
             drive.files()
-            .update(fileId=existing[0]["id"], media_body=media, fields="id,webViewLink")
+            .update(
+                fileId=existing[0]["id"],
+                body={"name": path.name},
+                media_body=media,
+                fields="id,webViewLink",
+            )
             .execute()
         )
     else:
