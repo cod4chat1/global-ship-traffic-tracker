@@ -94,16 +94,22 @@ The Codex desktop automation supplied with this project also runs daily at 08:00
 
 1. downloads the latest IMF PortWatch observations;
 2. selects the latest date with complete configured-area coverage;
-3. updates the native Google Sheet without replacing its dashboard formatting;
-4. uploads the dated PNG snapshot to Drive;
+3. compares that date with the last successfully delivered date in the dashboard;
+4. updates the native Google Sheet and Drive screenshot only when the observation date advances;
 5. retains diagnostic artifacts for 14 days; and
-6. posts a GitHub issue notification mentioning the repository owner after every successful or failed run.
+6. posts a GitHub issue notification only for new data or a failed run.
 
-Create a public GitHub repository and add this repository secret:
+Create a public GitHub repository and add these encrypted repository secrets:
 
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: the complete service-account JSON used by the rainfall tracker;
+- `GOOGLE_SPREADSHEET_ID`: the native dashboard spreadsheet ID; and
+- `GOOGLE_DRIVE_FOLDER_ID`: the folder used for dated screenshots.
 
 Share both the native Google Sheet and its Drive folder with the service-account email as Editor. Keep the `Daily ship traffic update alerts` issue open and subscribed. GitHub then delivers the completion mention according to your GitHub web, mobile, and email notification settings.
+
+When PortWatch has not published a later observation date, the workflow succeeds
+silently and does not rewrite the Sheet, replace the screenshot, or add an issue
+comment. Same-date provider revisions are intentionally ignored.
 
 The scheduled GitHub run sets `SHIP_TRAFFIC_SKIP_WORKBOOK=1`. It updates the native Google Sheet directly, while the local build continues to produce a standalone Excel workbook for download and archiving.
 
@@ -139,4 +145,3 @@ Implement `Provider.fetch()` in `src/ship_traffic/providers.py` for a licensed A
 - count crossings from line-side transitions rather than point presence;
 - return `unknown` separately; and
 - comply with the provider’s storage and redistribution licence.
-
