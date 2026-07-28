@@ -10,10 +10,23 @@ from pathlib import Path
 
 from .aggregate import enrich_rows, quality_rows
 from .config import load_config
-from .google_delivery import deliver
+from .google_delivery import current_dashboard_date, deliver
 from .providers import FixtureProvider, PortWatchProvider
 from .reporting import build_report_payload, write_outputs
 from .storage import Repository
+
+
+def classify_report_date(report_date: date, previous_report_date: date | None) -> str:
+    if previous_report_date is None or report_date > previous_report_date:
+        return "new_data"
+    return "no_new_data"
+
+
+def _write_run_result(output_dir: Path, result: dict[str, object]) -> str:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / "run_result.json"
+    path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    return str(path)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -84,6 +97,42 @@ def run(args: argparse.Namespace) -> int:
             else:
                 report_date = target_date
         row_count = repository.upsert(observations)
+        previous_report_date: date | None = None
+        update_status = "new_data"
+        if args.google and args.provider == "portwatch":
+            previous_report_date = current_dashboard_date()
+            update_status = classify_report_date(
+                report_date, previous_report_date
+            )
+            if update_status == "no_new_data":
+                completed = datetime.now(timezone.utc)
+                repository.finish_run(
+                    run_id,
+                    completed.isoformat(),
+                    "success",
+                    row_count,
+                    0,
+                    "No new PortWatch observation date; delivery skipped",
+                )
+                run_result = {
+                    "status": update_status,
+                    "report_date": report_date.isoformat(),
+                    "previous_report_date": previous_report_date.isoformat(),
+                    "delivered": False,
+                }
+                result_path = _write_run_result(output_dir, run_result)
+                print(
+                    json.dumps(
+                        {
+                            "run_id": run_id,
+                            "run_result": result_path,
+                            **run_result,
+                        },
+                        indent=2,
+                    )
+                )
+                return 0
+
         source_name = "FixtureProvider" if args.provider == "fixture" else "IMF PortWatch"
         stored = repository.observations(
             start_date.isoformat(), target_date.isoformat(), source=source_name
@@ -112,8 +161,22 @@ def run(args: argparse.Namespace) -> int:
         )
         artifacts = write_outputs(project_root, output_dir, payload)
         result: dict[str, object] = {"run_id": run_id, "artifacts": artifacts}
+        delivered = False
         if args.google:
             result["google"] = deliver(payload, artifacts["screenshot"])
+            delivered = True
+        run_result = {
+            "status": update_status,
+            "report_date": report_date.isoformat(),
+            "previous_report_date": (
+                previous_report_date.isoformat()
+                if previous_report_date is not None
+                else None
+            ),
+            "delivered": delivered,
+        }
+        artifacts["run_result"] = _write_run_result(output_dir, run_result)
+        result.update(run_result)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as error:  # noqa: BLE001 - CLI records and reports final failure
@@ -134,4 +197,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
