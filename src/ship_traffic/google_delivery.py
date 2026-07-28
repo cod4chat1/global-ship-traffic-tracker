@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,45 @@ def _credentials():
     return service_account.Credentials.from_service_account_file(
         filename, scopes=scopes
     )
+
+
+def parse_dashboard_date(value: object) -> date | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return date.fromisoformat(value.strip())
+    except ValueError:
+        return None
+
+
+def current_dashboard_date() -> date | None:
+    try:
+        from googleapiclient.discovery import build
+    except ImportError as error:
+        raise RuntimeError(
+            "Install the Google API dependencies before Google delivery"
+        ) from error
+
+    spreadsheet_id = os.getenv("GOOGLE_SPREADSHEET_ID")
+    if not spreadsheet_id:
+        raise RuntimeError("GOOGLE_SPREADSHEET_ID is not configured")
+
+    sheets = build(
+        "sheets", "v4", credentials=_credentials(), cache_discovery=False
+    )
+    response = (
+        sheets.spreadsheets()
+        .values()
+        .get(
+            spreadsheetId=spreadsheet_id,
+            range="'Dashboard'!B7",
+            valueRenderOption="FORMATTED_VALUE",
+        )
+        .execute()
+    )
+    values = response.get("values", [])
+    value = values[0][0] if values and values[0] else None
+    return parse_dashboard_date(value)
 
 
 def _selector_formula(value_column: str, row_number: int) -> str:
@@ -298,4 +338,3 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
         ),
         "screenshot_url": screenshot_url,
     }
-
