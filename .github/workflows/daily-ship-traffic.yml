@@ -65,11 +65,37 @@ jobs:
         env:
           JOB_STATUS: ${{ job.status }}
           SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+          RUN_RESULT_PATH: artifacts/daily/run_result.json
         with:
           script: |
+            const fs = require("fs");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const succeeded = process.env.JOB_STATUS === "success";
+            const jobSucceeded = process.env.JOB_STATUS === "success";
+            let runResult = null;
+            let invalidResult = null;
+            if (jobSucceeded) {
+              try {
+                runResult = JSON.parse(
+                  fs.readFileSync(process.env.RUN_RESULT_PATH, "utf8")
+                );
+              } catch (error) {
+                invalidResult = `Could not read run result: ${error.message}`;
+              }
+
+              if (runResult?.status === "no_new_data") {
+                core.info(
+                  `No new PortWatch data after ${runResult.report_date}; no alert sent.`
+                );
+                return;
+              }
+              if (runResult?.status !== "new_data") {
+                invalidResult =
+                  invalidResult || `Unexpected run status: ${runResult?.status}`;
+              }
+            }
+
+            const succeeded = jobSucceeded && !invalidResult;
             const icon = succeeded ? "[OK]" : "[FAILED]";
             const outcome = succeeded ? "completed successfully" : "failed";
             const runUrl =
@@ -81,6 +107,10 @@ jobs:
               `@${owner} The daily ship-traffic update **${outcome}**.`,
               "",
               `- Time: ${timestamp}`,
+              ...(succeeded
+                ? [`- New observation date: ${runResult.report_date}`]
+                : []),
+              ...(invalidResult ? [`- Validation: ${invalidResult}`] : []),
               `- [Workflow run](${runUrl})`,
               `- [Ship traffic dashboard](${sheetUrl})`,
             ].join("\n");
@@ -122,4 +152,8 @@ jobs:
                 body: `${icon} ${body}\n\nKeep this issue open and subscribed to receive daily alerts.`,
                 labels: ["daily-update-alerts"],
               });
+            }
+
+            if (invalidResult) {
+              core.setFailed(invalidResult);
             }
