@@ -1,11 +1,15 @@
+import json
 import tempfile
 import unittest
+from argparse import Namespace
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 from ship_traffic.aggregate import enrich_rows
+from ship_traffic.cli import classify_report_date, run
 from ship_traffic.config import load_config
-from ship_traffic.google_delivery import _sheet_values
+from ship_traffic.google_delivery import _sheet_values, parse_dashboard_date
 from ship_traffic.models import Area
 from ship_traffic.providers import FixtureProvider, PortWatchProvider
 from ship_traffic.storage import Repository
@@ -15,6 +19,71 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class CoreTests(unittest.TestCase):
+    def test_report_date_classification(self):
+        previous = date(2026, 7, 17)
+        self.assertEqual(
+            classify_report_date(date(2026, 7, 18), previous), "new_data"
+        )
+        self.assertEqual(
+            classify_report_date(date(2026, 7, 17), previous), "no_new_data"
+        )
+        self.assertEqual(
+            classify_report_date(date(2026, 7, 16), previous), "no_new_data"
+        )
+        self.assertEqual(
+            classify_report_date(date(2026, 7, 17), None), "new_data"
+        )
+
+    def test_dashboard_date_parser_recovers_from_invalid_values(self):
+        self.assertEqual(
+            parse_dashboard_date("2026-07-17"), date(2026, 7, 17)
+        )
+        self.assertIsNone(parse_dashboard_date(""))
+        self.assertIsNone(parse_dashboard_date("not-a-date"))
+        self.assertIsNone(parse_dashboard_date(None))
+
+    def test_unchanged_google_run_skips_report_and_delivery(self):
+        config = load_config(ROOT / "config" / "areas.json")
+        report_date = date(2026, 7, 17)
+        observations = FixtureProvider().fetch(
+            config.areas, report_date, report_date
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output_dir = root / "artifacts"
+            args = Namespace(
+                provider="portwatch",
+                date=report_date.isoformat(),
+                history_days=1,
+                config=str(ROOT / "config" / "areas.json"),
+                database=str(root / "test.sqlite3"),
+                output_dir=str(output_dir),
+                google=True,
+            )
+            with (
+                patch(
+                    "ship_traffic.cli.PortWatchProvider.fetch",
+                    return_value=observations,
+                ),
+                patch(
+                    "ship_traffic.cli.current_dashboard_date",
+                    return_value=report_date,
+                ),
+                patch("ship_traffic.cli.write_outputs") as write_outputs,
+                patch("ship_traffic.cli.deliver") as deliver,
+            ):
+                self.assertEqual(run(args), 0)
+
+            write_outputs.assert_not_called()
+            deliver.assert_not_called()
+            result = json.loads(
+                (output_dir / "run_result.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(result["status"], "no_new_data")
+            self.assertEqual(result["report_date"], "2026-07-17")
+            self.assertEqual(result["previous_report_date"], "2026-07-17")
+            self.assertFalse(result["delivered"])
+
     def test_config_has_expected_coverage(self):
         config = load_config(ROOT / "config" / "areas.json")
         self.assertEqual(len(config.straits), 10)
@@ -142,4 +211,3 @@ class CoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
