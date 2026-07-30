@@ -89,14 +89,27 @@ def current_dashboard_date() -> date | None:
 def _selector_formula(value_column: str, row_number: int) -> str:
     return (
         f'=IF(Dashboard!$B$6<>"All matching locations",'
+        f'IF(COUNTIFS($A$2:$A$2000,$O{row_number},'
+        f'$D$2:$D$2000,Dashboard!$B$6,'
+        f'${value_column}$2:${value_column}$2000,"<>")>0,'
         f"SUMIFS(${value_column}$2:${value_column}$2000,"
         f"$A$2:$A$2000,$O{row_number},$D$2:$D$2000,Dashboard!$B$6),"
+        f'""),'
         f'IF(Dashboard!$B$5="All",'
+        f'IF(COUNTIFS($A$2:$A$2000,$O{row_number},'
+        f'$B$2:$B$2000,Dashboard!$B$4,'
+        f'${value_column}$2:${value_column}$2000,"<>")>0,'
         f"SUMIFS(${value_column}$2:${value_column}$2000,"
         f"$A$2:$A$2000,$O{row_number},$B$2:$B$2000,Dashboard!$B$4),"
+        f'""),'
+        f'IF(COUNTIFS($A$2:$A$2000,$O{row_number},'
+        f'$B$2:$B$2000,Dashboard!$B$4,'
+        f'$C$2:$C$2000,Dashboard!$B$5,'
+        f'${value_column}$2:${value_column}$2000,"<>")>0,'
         f"SUMIFS(${value_column}$2:${value_column}$2000,"
         f"$A$2:$A$2000,$O{row_number},$B$2:$B$2000,Dashboard!$B$4,"
-        f"$C$2:$C$2000,Dashboard!$B$5)))"
+        f"$C$2:$C$2000,Dashboard!$B$5),"
+        f'"")))'
     )
 
 
@@ -108,9 +121,27 @@ def _comparison_formula(
     return (
         f'=IF(Dashboard!$H${selection_row},'
         f'IF($U{date_row}>=Dashboard!$B$7-Dashboard!$B$8+1,'
+        f'IF(COUNTIFS($A$2:$A$5000,$U{date_row},'
+        f'$D$2:$D$5000,Dashboard!$I${selection_row},'
+        f'${value_column}$2:${value_column}$5000,"<>")>0,'
         f'SUMIFS(${value_column}$2:${value_column}$5000,'
         f'$A$2:$A$5000,$U{date_row},'
-        f'$D$2:$D$5000,Dashboard!$I${selection_row}),NA()),NA())'
+        f'$D$2:$D$5000,Dashboard!$I${selection_row}),""),""),"")'
+    )
+
+
+def _dashboard_category_formula(value_column: str) -> str:
+    data_range = f"'Dashboard_Data'!${value_column}$2:${value_column}$2000"
+    return (
+        '=IF($B$6<>"All matching locations",'
+        f"SUMIFS({data_range},'Dashboard_Data'!$A$2:$A$2000,$B$7,"
+        f"'Dashboard_Data'!$D$2:$D$2000,$B$6),"
+        'IF($B$5="All",'
+        f"SUMIFS({data_range},'Dashboard_Data'!$A$2:$A$2000,$B$7,"
+        f"'Dashboard_Data'!$B$2:$B$2000,$B$4),"
+        f"SUMIFS({data_range},'Dashboard_Data'!$A$2:$A$2000,$B$7,"
+        f"'Dashboard_Data'!$B$2:$B$2000,$B$4,"
+        f"'Dashboard_Data'!$C$2:$C$2000,$B$5)))"
     )
 
 
@@ -471,9 +502,17 @@ def _configure_dashboard(
             '=IF(C13="","Insufficient data",IF(C13>10%,"Above recent average",IF(C13<-10%,"Below recent average","Near recent average")))',
         ],
         [],
-        ["PortWatch reports aggregate activity; exact parked-vessel counts require licensed vessel-level AIS."],
+        ["Source note: PortWatch provides aggregate vessel activity. Exact berth and anchorage counts require a licensed AIS feed."],
         [],
-        ["Regional summary"],
+        ["Vessel type breakdown"],
+        ["Vessel type", "Actual", "Share of total"],
+        ["Bulk – oil & gas", _dashboard_category_formula("H"), '=IFERROR(B19/$A$10,"")'],
+        ["Bulk – non-oil & gas", _dashboard_category_formula("I"), '=IFERROR(B20/$A$10,"")'],
+        ["Container", _dashboard_category_formula("J"), '=IFERROR(B21/$A$10,"")'],
+        ["Other cargo", _dashboard_category_formula("K"), '=IFERROR(B22/$A$10,"")'],
+        ["Other / unknown", "=MAX(0,$A$10-SUM($B$19:$B$22))", '=IFERROR(B23/$A$10,"")'],
+        [],
+        ["Regional coverage"],
         ["Region", "Type", "Observed", "Configured", "Coverage", "Total activity"],
     ]
     for row in payload["regional_summary"][:12]:
@@ -503,7 +542,7 @@ def _configure_dashboard(
 
     sheets.spreadsheets().values().clear(
         spreadsheetId=spreadsheet_id,
-        range="'Dashboard'!A1:N40",
+        range="'Dashboard'!A1:N60",
         body={},
     ).execute()
     sheets.spreadsheets().values().update(
@@ -523,10 +562,37 @@ def _configure_dashboard(
                     "range": {
                         "sheetId": dashboard_id,
                         "startRowIndex": 0,
-                        "endRowIndex": 40,
+                        "endRowIndex": 60,
                         "startColumnIndex": 0,
                         "endColumnIndex": 14,
                     }
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 0,
+                        "endRowIndex": 60,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 14,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {"red": 1, "green": 1, "blue": 1},
+                            "textFormat": {
+                                "fontFamily": "Arial",
+                                "fontSize": 10,
+                                "foregroundColor": {
+                                    "red": 0.07,
+                                    "green": 0.09,
+                                    "blue": 0.14,
+                                },
+                            },
+                            "verticalAlignment": "MIDDLE",
+                        }
+                    },
+                    "fields": "userEnteredFormat",
                 }
             },
             {
@@ -537,6 +603,42 @@ def _configure_dashboard(
                         "endRowIndex": 2,
                         "startColumnIndex": 0,
                         "endColumnIndex": 14,
+                    },
+                    "mergeType": "MERGE_ALL",
+                }
+            },
+            {
+                "mergeCells": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 14,
+                        "endRowIndex": 15,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "mergeType": "MERGE_ALL",
+                }
+            },
+            {
+                "mergeCells": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 16,
+                        "endRowIndex": 17,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "mergeType": "MERGE_ALL",
+                }
+            },
+            {
+                "mergeCells": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 24,
+                        "endRowIndex": 25,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
                     },
                     "mergeType": "MERGE_ALL",
                 }
@@ -676,6 +778,333 @@ def _configure_dashboard(
                 }
             },
             {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 3,
+                        "endRowIndex": 8,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 1,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.90,
+                                "green": 0.91,
+                                "blue": 0.92,
+                            },
+                            "textFormat": {"bold": True},
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat.bold)",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 3,
+                        "endRowIndex": 8,
+                        "startColumnIndex": 1,
+                        "endColumnIndex": 2,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.94,
+                                "green": 0.96,
+                                "blue": 1,
+                            },
+                            "textFormat": {
+                                "bold": True,
+                                "foregroundColor": {
+                                    "red": 0.12,
+                                    "green": 0.23,
+                                    "blue": 0.54,
+                                },
+                            },
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat)",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 8,
+                        "endRowIndex": 13,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "horizontalAlignment": "CENTER",
+                        }
+                    },
+                    "fields": "userEnteredFormat.horizontalAlignment",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 6,
+                        "endRowIndex": 7,
+                        "startColumnIndex": 1,
+                        "endColumnIndex": 2,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "numberFormat": {
+                                "type": "DATE",
+                                "pattern": "yyyy-mm-dd",
+                            }
+                        }
+                    },
+                    "fields": "userEnteredFormat.numberFormat",
+                }
+            },
+            *[
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": dashboard_id,
+                            "startRowIndex": 12,
+                            "endRowIndex": 13,
+                            "startColumnIndex": column,
+                            "endColumnIndex": column + 1,
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "numberFormat": {
+                                    "type": "PERCENT",
+                                    "pattern": "0.0%",
+                                }
+                            }
+                        },
+                        "fields": "userEnteredFormat.numberFormat",
+                    }
+                }
+                for column in (0, 2)
+            ],
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 8,
+                        "endRowIndex": 9,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.90,
+                                "green": 0.91,
+                                "blue": 0.92,
+                            },
+                            "textFormat": {"bold": True},
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat.bold)",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 11,
+                        "endRowIndex": 12,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.90,
+                                "green": 0.91,
+                                "blue": 0.92,
+                            },
+                            "textFormat": {"bold": True},
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat.bold)",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 14,
+                        "endRowIndex": 15,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.97,
+                                "green": 0.98,
+                                "blue": 0.99,
+                            },
+                            "horizontalAlignment": "LEFT",
+                            "wrapStrategy": "WRAP",
+                            "textFormat": {
+                                "italic": True,
+                                "fontSize": 10,
+                                "foregroundColor": {
+                                    "red": 0.30,
+                                    "green": 0.34,
+                                    "blue": 0.40,
+                                },
+                            },
+                        }
+                    },
+                    "fields": "userEnteredFormat",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 16,
+                        "endRowIndex": 17,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.90,
+                                "green": 0.91,
+                                "blue": 0.92,
+                            },
+                            "textFormat": {"bold": True, "fontSize": 12},
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat)",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 24,
+                        "endRowIndex": 25,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.90,
+                                "green": 0.91,
+                                "blue": 0.92,
+                            },
+                            "textFormat": {"bold": True, "fontSize": 12},
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat)",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 17,
+                        "endRowIndex": 18,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 3,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.93,
+                                "green": 0.95,
+                                "blue": 0.97,
+                            },
+                            "textFormat": {"bold": True},
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat.bold)",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 25,
+                        "endRowIndex": 26,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 6,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "backgroundColor": {
+                                "red": 0.93,
+                                "green": 0.95,
+                                "blue": 0.97,
+                            },
+                            "textFormat": {"bold": True},
+                        }
+                    },
+                    "fields": "userEnteredFormat(backgroundColor,textFormat.bold)",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 18,
+                        "endRowIndex": 23,
+                        "startColumnIndex": 2,
+                        "endColumnIndex": 3,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "numberFormat": {
+                                "type": "PERCENT",
+                                "pattern": "0.0%",
+                            }
+                        }
+                    },
+                    "fields": "userEnteredFormat.numberFormat",
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "startRowIndex": 26,
+                        "endRowIndex": 38,
+                        "startColumnIndex": 4,
+                        "endColumnIndex": 5,
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "numberFormat": {
+                                "type": "PERCENT",
+                                "pattern": "0%",
+                            }
+                        }
+                    },
+                    "fields": "userEnteredFormat.numberFormat",
+                }
+            },
+            {
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "dimension": "ROWS",
+                        "startIndex": 14,
+                        "endIndex": 15,
+                    },
+                    "properties": {"pixelSize": 42},
+                    "fields": "pixelSize",
+                }
+            },
+            {
                 "updateSheetProperties": {
                     "properties": {
                         "sheetId": dashboard_id,
@@ -689,10 +1118,22 @@ def _configure_dashboard(
                     "range": {
                         "sheetId": dashboard_id,
                         "dimension": "COLUMNS",
-                        "startIndex": 0,
+                        "startIndex": 1,
                         "endIndex": 14,
                     },
                     "properties": {"pixelSize": 112},
+                    "fields": "pixelSize",
+                }
+            },
+            {
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": dashboard_id,
+                        "dimension": "COLUMNS",
+                        "startIndex": 0,
+                        "endIndex": 1,
+                    },
+                    "properties": {"pixelSize": 190},
                     "fields": "pixelSize",
                 }
             },
