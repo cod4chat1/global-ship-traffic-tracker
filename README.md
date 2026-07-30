@@ -120,7 +120,7 @@ The Codex desktop automation supplied with this project also runs daily at 08:00
 3. compares that date with the last successfully delivered date in the dashboard;
 4. updates the native Google Sheet and Drive screenshot only when the observation date advances;
 5. retains diagnostic artifacts for 14 days; and
-6. posts a GitHub issue notification only for new data or a failed run.
+6. posts a GitHub issue notification only when a new observation date is published.
 
 Create a public GitHub repository and add these encrypted repository secrets:
 

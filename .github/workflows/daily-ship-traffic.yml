@@ -60,10 +60,9 @@ jobs:
           if-no-files-found: warn
 
       - name: Send GitHub completion alert
-        if: always()
+        if: success()
         uses: actions/github-script@v7
         env:
-          JOB_STATUS: ${{ job.status }}
           SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
           RUN_RESULT_PATH: artifacts/daily/run_result.json
         with:
@@ -71,46 +70,37 @@ jobs:
             const fs = require("fs");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const jobSucceeded = process.env.JOB_STATUS === "success";
-            let runResult = null;
-            let invalidResult = null;
-            if (jobSucceeded) {
-              try {
-                runResult = JSON.parse(
-                  fs.readFileSync(process.env.RUN_RESULT_PATH, "utf8")
-                );
-              } catch (error) {
-                invalidResult = `Could not read run result: ${error.message}`;
-              }
-
-              if (runResult?.status === "no_new_data") {
-                core.info(
-                  `No new PortWatch data after ${runResult.report_date}; no alert sent.`
-                );
-                return;
-              }
-              if (runResult?.status !== "new_data") {
-                invalidResult =
-                  invalidResult || `Unexpected run status: ${runResult?.status}`;
-              }
+            let runResult;
+            try {
+              runResult = JSON.parse(
+                fs.readFileSync(process.env.RUN_RESULT_PATH, "utf8")
+              );
+            } catch (error) {
+              core.setFailed(`Could not read run result: ${error.message}`);
+              return;
             }
 
-            const succeeded = jobSucceeded && !invalidResult;
-            const icon = succeeded ? "[OK]" : "[FAILED]";
-            const outcome = succeeded ? "completed successfully" : "failed";
+            if (runResult?.status === "no_new_data") {
+              core.info(
+                `No new PortWatch data after ${runResult.report_date}; no alert sent.`
+              );
+              return;
+            }
+            if (runResult?.status !== "new_data") {
+              core.setFailed(`Unexpected run status: ${runResult?.status}`);
+              return;
+            }
+
             const runUrl =
               `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
             const sheetUrl =
               `https://docs.google.com/spreadsheets/d/${process.env.SPREADSHEET_ID}/edit`;
             const timestamp = new Date().toISOString();
             const body = [
-              `@${owner} The daily ship-traffic update **${outcome}**.`,
+              `@${owner} New ship-traffic data has been published.`,
               "",
               `- Time: ${timestamp}`,
-              ...(succeeded
-                ? [`- New observation date: ${runResult.report_date}`]
-                : []),
-              ...(invalidResult ? [`- Validation: ${invalidResult}`] : []),
+              `- New observation date: ${runResult.report_date}`,
               `- [Workflow run](${runUrl})`,
               `- [Ship traffic dashboard](${sheetUrl})`,
             ].join("\n");
@@ -142,18 +132,14 @@ jobs:
                 owner,
                 repo,
                 issue_number: existing.data[0].number,
-                body: `${icon} ${body}`,
+                body: `[NEW DATA] ${body}`,
               });
             } else {
               await github.rest.issues.create({
                 owner,
                 repo,
                 title: "Daily ship traffic update alerts",
-                body: `${icon} ${body}\n\nKeep this issue open and subscribed to receive daily alerts.`,
+                body: `[NEW DATA] ${body}\n\nKeep this issue open and subscribed to receive alerts when a new observation is published.`,
                 labels: ["daily-update-alerts"],
               });
-            }
-
-            if (invalidResult) {
-              core.setFailed(invalidResult);
             }
