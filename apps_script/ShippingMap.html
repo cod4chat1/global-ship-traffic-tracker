@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root { --ink:#102235; --muted:#60758a; --line:#d8e1ea; --sea:#edf6fb; --land:#cbd9d2; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); font:13px Arial,sans-serif; background:#fff; }
+    header { display:flex; align-items:end; justify-content:space-between; padding:14px 18px 10px; border-bottom:1px solid var(--line); }
+    h1 { margin:0; font-size:20px; }
+    .sub { color:var(--muted); margin-top:4px; }
+    .controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    select { border:1px solid #b8c7d5; border-radius:6px; background:#fff; padding:7px 28px 7px 9px; color:var(--ink); }
+    main { display:grid; grid-template-columns:minmax(0,1fr) 300px; height:680px; }
+    .map-wrap { position:relative; overflow:hidden; background:var(--sea); }
+    svg { width:100%; height:100%; display:block; }
+    .graticule { stroke:#d6e7f0; stroke-width:1; }
+    .land { fill:var(--land); stroke:#91aa9f; stroke-width:1; }
+    .marker { cursor:pointer; stroke:#fff; stroke-width:1.5; opacity:.9; }
+    .marker:hover { opacity:1; stroke:#102235; stroke-width:2; }
+    .tooltip { position:absolute; display:none; pointer-events:none; max-width:290px; padding:10px 11px; border-radius:7px; background:rgba(16,34,53,.96); color:#fff; box-shadow:0 5px 18px #0003; line-height:1.4; z-index:4; }
+    aside { border-left:1px solid var(--line); padding:16px; overflow:auto; }
+    aside h2 { margin:0 0 10px; font-size:17px; }
+    .empty { color:var(--muted); line-height:1.5; }
+    .metric { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid #edf1f5; }
+    .metric span { color:var(--muted); }
+    .metric strong { text-align:right; }
+    .status { margin:10px 0; padding:8px; border-radius:6px; background:#f3f6f8; }
+    .warning { margin-top:12px; padding:9px; border-left:3px solid #e9a23b; background:#fff8e8; color:#744d0f; line-height:1.45; }
+    #spark { width:100%; height:90px; margin-top:10px; background:#f8fafc; }
+    .legend { position:absolute; left:14px; bottom:12px; display:flex; gap:12px; background:#ffffffe8; padding:7px 9px; border-radius:6px; border:1px solid var(--line); color:var(--muted); }
+    .key { display:inline-flex; align-items:center; gap:5px; }
+    .circle { width:10px; height:10px; border-radius:50%; background:#2878b5; }
+    .diamond { width:9px; height:9px; transform:rotate(45deg); background:#dc8a16; }
+    .loading { padding:30px; color:var(--muted); }
+    .error { margin:30px; padding:14px; background:#fff1f1; color:#8a1d1d; border:1px solid #efc5c5; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>Global shipping activity</h1><div class="sub">IMF PortWatch · hover for detail, click to pin 45-day trend</div></div>
+    <div class="controls">
+      <select id="type"><option>Both</option><option>Ports</option><option>Straits</option></select>
+      <select id="region"><option>All regions</option></select>
+      <select id="metric">
+        <option value="Total activity">Total activity</option>
+        <option value="Change vs 7-day">Change vs 7-day</option>
+        <option value="Change vs 30-day">Change vs 30-day</option>
+        <option value="Bulk O&G">Bulk O&amp;G</option>
+        <option value="Container">Container</option>
+      </select>
+    </div>
+  </header>
+  <main>
+    <section class="map-wrap" id="mapWrap">
+      <div class="loading" id="loading">Loading map data…</div>
+      <svg id="map" viewBox="0 0 900 520" aria-label="World shipping activity map" hidden>
+        <rect width="900" height="520" fill="#edf6fb"/>
+        <g class="graticule"><path d="M0 130H900M0 260H900M0 390H900M225 0V520M450 0V520M675 0V520"/></g>
+        <g class="land">
+          <path d="M35 108L93 60 177 52 238 84 286 132 254 181 202 170 176 229 117 231 67 190 35 150Z"/>
+          <path d="M190 258L236 276 276 331 256 444 223 470 190 389 171 311Z"/>
+          <path d="M353 91L446 55 551 60 650 88 773 103 867 157 850 220 751 235 677 196 602 216 545 183 490 222 430 181 382 164Z"/>
+          <path d="M455 227L530 232 571 306 548 425 493 440 455 356 431 281Z"/>
+          <path d="M722 348L802 346 866 398 825 448 748 428 706 386Z"/>
+          <path d="M843 77L889 95 881 151 848 143Z"/>
+        </g>
+        <g id="markers"></g>
+      </svg>
+      <div id="tooltip" class="tooltip"></div>
+      <div class="legend"><span class="key"><i class="circle"></i>Port</span><span class="key"><i class="diamond"></i>Strait</span><span>Size = activity</span></div>
+    </section>
+    <aside id="detail"><div class="empty">Select a port or strait to pin its latest statistics and trend.</div></aside>
+  </main>
+<script>
+  let rows = [];
+  const svg = document.getElementById("map");
+  const markers = document.getElementById("markers");
+  const tooltip = document.getElementById("tooltip");
+  const wrap = document.getElementById("mapWrap");
+  const detail = document.getElementById("detail");
+  const n = value => value === "" || value == null ? null : Number(value);
+  const fmt = value => n(value) == null ? "Unavailable" : n(value).toLocaleString(undefined,{maximumFractionDigits:1});
+  const pct = value => n(value) == null ? "Insufficient data" : `${(n(value)*100).toFixed(1)}%`;
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const x = lon => (Number(lon)+180)/360*900;
+  const y = lat => (90-Number(lat))/180*520;
+
+  function color(row, metric) {
+    if (row.Availability !== "available" && row.Availability !== "fixture") return "#8b98a5";
+    if (metric === "Total activity") return row.Type === "port" ? "#2878b5" : "#dc8a16";
+    const raw = metric === "Bulk O&G" || metric === "Container"
+      ? n(row[metric]) / Math.max(1,n(row["Total activity"]))
+      : n(row[metric]);
+    if (raw == null || Number.isNaN(raw)) return "#8b98a5";
+    if (metric.startsWith("Change")) return raw > .10 ? "#bf3b35" : raw < -.10 ? "#25835b" : "#d9a21b";
+    return raw > .35 ? "#6f3fa0" : raw > .2 ? "#3878bd" : "#7ba9c8";
+  }
+
+  function filtered() {
+    const type = document.getElementById("type").value;
+    const region = document.getElementById("region").value;
+    return rows.filter(row =>
+      (type === "Both" || (type === "Ports" && row.Type === "port") || (type === "Straits" && row.Type === "strait")) &&
+      (region === "All regions" || row.Region === region)
+    );
+  }
+
+  function hoverHtml(row) {
+    return `<strong>${esc(row.Name)}</strong> · ${esc(row.Type)}<br>${esc(row.Region)} · ${esc(row["Observation date"])}<br>` +
+      `Activity: ${fmt(row["Total activity"])} · 7d: ${fmt(row["7-day average"])} · 30d: ${fmt(row["30-day average"])}<br>` +
+      `Vs 7d: ${pct(row["Change vs 7-day"])} · Vs 30d: ${pct(row["Change vs 30-day"])}<br>` +
+      `Bulk O&G: ${fmt(row["Bulk O&G"])} · Container: ${fmt(row.Container)}<br>` +
+      `${esc(row["Recent status"])} · ${esc(row.Availability)}`;
+  }
+
+  function render() {
+    markers.innerHTML = "";
+    const metric = document.getElementById("metric").value;
+    const used = [];
+    filtered().forEach(row => {
+      if (!Number.isFinite(Number(row.Latitude)) || !Number.isFinite(Number(row.Longitude))) return;
+      let px = x(row.Longitude), py = y(row.Latitude);
+      const collision = used.filter(p => Math.hypot(p.x-px,p.y-py)<12).length;
+      if (collision) { const angle=collision*2.2; px+=Math.cos(angle)*11; py+=Math.sin(angle)*11; }
+      used.push({x:px,y:py});
+      const value = Math.max(0,n(row["Total activity"]) || 0);
+      const size = Math.max(5,Math.min(15,5+Math.sqrt(value)/2.5));
+      const el = document.createElementNS("http://www.w3.org/2000/svg", row.Type === "port" ? "circle" : "rect");
+      if (row.Type === "port") { el.setAttribute("cx",px); el.setAttribute("cy",py); el.setAttribute("r",size); }
+      else { el.setAttribute("x",px-size*.7); el.setAttribute("y",py-size*.7); el.setAttribute("width",size*1.4); el.setAttribute("height",size*1.4); el.setAttribute("transform",`rotate(45 ${px} ${py})`); }
+      el.setAttribute("fill",color(row,metric)); el.setAttribute("class","marker");
+      el.addEventListener("mousemove", event => {
+        tooltip.innerHTML=hoverHtml(row); tooltip.style.display="block";
+        const rect=wrap.getBoundingClientRect(); tooltip.style.left=`${Math.min(event.clientX-rect.left+12,rect.width-310)}px`; tooltip.style.top=`${Math.max(8,event.clientY-rect.top-60)}px`;
+      });
+      el.addEventListener("mouseleave",()=>tooltip.style.display="none");
+      el.addEventListener("click",()=>pin(row));
+      markers.appendChild(el);
+    });
+  }
+
+  function pin(row) {
+    detail.innerHTML = `<h2>${esc(row.Name)}</h2><div class="sub">${esc(row.Type)} · ${esc(row.Region)} · ${esc(row["Observation date"])}</div>` +
+      [["Activity",fmt(row["Total activity"])],["7-day average",fmt(row["7-day average"])],["30-day average",fmt(row["30-day average"])],["Vs 7-day",pct(row["Change vs 7-day"])],["Vs 30-day",pct(row["Change vs 30-day"])],["Bulk O&G",fmt(row["Bulk O&G"])],["Bulk non-O&G",fmt(row["Bulk non-O&G"])],["Container",fmt(row.Container)],["Imports",fmt(row.Imports)],["Exports",fmt(row.Exports)]].map(v=>`<div class="metric"><span>${v[0]}</span><strong>${v[1]}</strong></div>`).join("") +
+      `<div class="status">${esc(row["Recent status"])} · ${esc(row.Availability)}</div><svg id="spark" viewBox="0 0 270 90"></svg>` +
+      `<div class="warning">PortWatch provides aggregate daily activity. Exact ships parked, at berth, or waiting require licensed vessel-level AIS.</div>`;
+    drawSpark(row["45-day history JSON"]);
+  }
+
+  function drawSpark(raw) {
+    const target=document.getElementById("spark"); let data=[];
+    try { data=JSON.parse(raw||"[]").filter(d=>n(d.total)!=null); } catch(e) { target.innerHTML=""; return; }
+    if(data.length<2) return;
+    const vals=data.map(d=>n(d.total)), min=Math.min(...vals), max=Math.max(...vals), span=Math.max(1,max-min);
+    const points=vals.map((v,i)=>`${8+i/(vals.length-1)*254},${80-(v-min)/span*68}`).join(" ");
+    target.innerHTML=`<polyline points="${points}" fill="none" stroke="#2878b5" stroke-width="2"/><line x1="8" y1="80" x2="262" y2="80" stroke="#d8e1ea"/>`;
+  }
+
+  function loaded(data) {
+    rows=data; document.getElementById("loading").remove(); svg.hidden=false;
+    [...new Set(rows.map(r=>r.Region))].sort().forEach(region=>{
+      const option=document.createElement("option"); option.textContent=region; document.getElementById("region").appendChild(option);
+    });
+    ["type","region","metric"].forEach(id=>document.getElementById(id).addEventListener("change",render));
+    render();
+  }
+  function failed(error) { document.querySelector("main").innerHTML=`<div class="error">${esc(error.message||error)}</div>`; }
+  google.script.run.withSuccessHandler(loaded).withFailureHandler(failed).getShippingMapData();
+</script>
+</body>
+</html>

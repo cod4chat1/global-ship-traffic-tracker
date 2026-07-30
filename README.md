@@ -1,6 +1,6 @@
 # Global Ship Traffic Tracker MVP
 
-This project produces a daily report for 10 major maritime passages and 20 major ports. It writes normalized observations to SQLite, calculates 7-day and 30-day comparisons, creates a management workbook, renders a timestamped map screenshot, and can deliver both to Google Sheets and Drive.
+This project produces a daily report for 12 major maritime passages and 32 major ports. It writes normalized observations to SQLite, calculates complete-window 7-day and 30-day comparisons, creates a management workbook, renders a timestamped map screenshot, and can deliver both to Google Sheets and Drive.
 
 ## What the free version measures
 
@@ -50,6 +50,29 @@ The first sheet is a one-page management dashboard. Use the dropdowns for:
 - a specific strait or port.
 
 A specific-area selection overrides the type and region filters. The dashboard updates the headline activity, 7-day and 30-day averages, percentage variances, vessel-category mix, and trend chart.
+
+The dashboard also includes:
+
+- a priority-location comparison chart controlled by checkboxes;
+- a current-conditions table for all tracked locations;
+- data-quality and source-freshness indicators; and
+- hidden support tabs that keep the visible workbook compact.
+
+## Interactive world map
+
+`apps_script/Code.gs` and `apps_script/ShippingMap.html` add a `Shipping Map`
+menu to the native Google Sheet. The map supports region, area-type, and
+location filters. Hovering a marker shows the latest activity, 7-day average,
+30-day average, variance, data date, and quality status.
+
+For a one-time installation:
+
+1. Open the spreadsheet in Google Sheets and choose **Extensions → Apps Script**.
+2. Copy `apps_script/Code.gs` into `Code.gs`.
+3. Add an HTML file named `ShippingMap` and copy `apps_script/ShippingMap.html`.
+4. Save, select `onOpen`, click **Run**, and approve the requested spreadsheet
+   permission.
+5. Reload the spreadsheet and choose **Shipping Map → Open world map**.
 
 Official data surfaces:
 
@@ -122,9 +145,15 @@ Before deployment:
 
 ## Configuration
 
-Edit `config/areas.json` to change tracked areas. The MVP validates exactly 10 straits and 20 ports. `source_name` is matched against the live PortWatch database at runtime, avoiding brittle hard-coded PortWatch IDs.
+Edit `config/areas.json` to change tracked areas. The tracker supports up to 50
+locations and limits the priority comparison set to 16, keeping the Sheet
+responsive as coverage expands. `source_name` is matched unambiguously against
+the live PortWatch database at runtime, avoiding brittle hard-coded PortWatch
+IDs.
 
-The public-data set uses Cape of Good Hope in the initial ten because PortWatch does not currently publish a separate Singapore Strait daily series. Singapore Strait can be restored when a vessel-level AIS provider is configured.
+Use `scripts/preflight_expansion.py` before adding candidates. It validates
+source coverage and rejects missing or ambiguous PortWatch matches instead of
+silently substituting a different port or chokepoint.
 
 ## Tests
 

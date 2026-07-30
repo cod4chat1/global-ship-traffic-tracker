@@ -182,10 +182,47 @@ class PortWatchProvider(Provider):
                 for item in source_rows
                 if target in _normalized(item[1]) or _normalized(item[1]) in target
             ]
+            if len(exact) == 1:
+                resolved[area.id] = exact[0][0]
+                continue
             candidates = exact or contains
-            if candidates:
-                resolved[area.id] = sorted(candidates, key=lambda item: len(item[1]))[0][0]
+            if not candidates:
+                continue
+            ranked = sorted(candidates, key=lambda item: (len(item[1]), item[1]))
+            shortest_length = len(ranked[0][1])
+            shortest = [item for item in ranked if len(item[1]) == shortest_length]
+            if len(shortest) == 1:
+                resolved[area.id] = shortest[0][0]
         return resolved
+
+    def resolution_report(self, areas: Iterable[Area]) -> list[dict[str, Any]]:
+        """Return deterministic source-resolution results without fetching history."""
+        area_tuple = tuple(areas)
+        report: list[dict[str, Any]] = []
+        for area_type in ("strait", "port"):
+            typed_areas = tuple(
+                area for area in area_tuple if area.type == area_type
+            )
+            database_service, _ = self.datasets[area_type]
+            resolved = self._resolve_source_ids(typed_areas, database_service)
+            for area in typed_areas:
+                report.append(
+                    {
+                        "area_id": area.id,
+                        "area_name": area.name,
+                        "area_type": area.type,
+                        "status": (
+                            "accepted" if area.id in resolved else "rejected"
+                        ),
+                        "source_id": resolved.get(area.id),
+                        "reason": (
+                            "Unambiguous source match"
+                            if area.id in resolved
+                            else "No unambiguous source match"
+                        ),
+                    }
+                )
+        return report
 
     @staticmethod
     def _convert(
@@ -303,4 +340,3 @@ class AisProvider(Provider):
         raise NotImplementedError(
             "Configure a licensed AIS adapter to calculate exact parked-vessel metrics."
         )
-

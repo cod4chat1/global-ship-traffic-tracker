@@ -24,6 +24,7 @@ class Area:
     region: str
     lat: float
     lon: float
+    priority: bool = False
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Area":
@@ -35,6 +36,7 @@ class Area:
             region=str(value["region"]),
             lat=float(value["lat"]),
             lon=float(value["lon"]),
+            priority=bool(value.get("priority", False)),
         )
 
 
@@ -61,4 +63,3 @@ class DailyObservation:
         record = asdict(self)
         record["observation_date"] = self.observation_date.isoformat()
         return record
-

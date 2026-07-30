@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
-from ship_traffic.aggregate import enrich_rows
+from ship_traffic.aggregate import enrich_rows, quality_rows
 from ship_traffic.cli import classify_report_date, run
 from ship_traffic.config import load_config
 from ship_traffic.google_delivery import _sheet_values, parse_dashboard_date
@@ -86,9 +86,10 @@ class CoreTests(unittest.TestCase):
 
     def test_config_has_expected_coverage(self):
         config = load_config(ROOT / "config" / "areas.json")
-        self.assertEqual(len(config.straits), 10)
-        self.assertEqual(len(config.ports), 20)
-        self.assertEqual(len({area.id for area in config.areas}), 30)
+        self.assertEqual(len(config.straits), 12)
+        self.assertEqual(len(config.ports), 32)
+        self.assertEqual(len({area.id for area in config.areas}), 44)
+        self.assertEqual(sum(area.priority for area in config.areas), 16)
 
     def test_fixture_categories_reconcile(self):
         config = load_config(ROOT / "config" / "areas.json")
@@ -145,8 +146,39 @@ class CoreTests(unittest.TestCase):
         enriched = enrich_rows(rows)
         self.assertIsNone(enriched[0]["avg_7d"])
         self.assertIsNone(enriched[0]["change_7d"])
-        self.assertEqual(enriched[1]["avg_7d"], 10.0)
-        self.assertEqual(enriched[1]["change_7d"], 0.0)
+        self.assertIsNone(enriched[1]["avg_7d"])
+        self.assertIsNone(enriched[1]["change_7d"])
+        self.assertEqual(enriched[1]["recent_status"], "Insufficient data")
+
+    def test_rolling_average_requires_complete_calendar_window(self):
+        rows = [
+            {
+                "observation_date": f"2026-07-{day:02d}",
+                "area_id": "x",
+                "total": float(day),
+            }
+            for day in range(1, 31)
+        ]
+        enriched = enrich_rows(rows)
+        self.assertEqual(enriched[5]["avg_7d"], None)
+        self.assertEqual(enriched[6]["avg_7d"], 4.0)
+        self.assertEqual(enriched[-1]["avg_30d"], 15.5)
+        self.assertEqual(enriched[-1]["recent_status"], "Above recent average")
+
+    def test_quality_count_is_dynamic_up_to_cap(self):
+        row = {
+            "observation_date": "2026-07-30",
+            "area_id": "x",
+            "area_name": "X",
+            "total": 10,
+            "unknown": 0,
+            "availability": "available",
+            "avg_7d": 9,
+            "avg_30d": 8,
+        }
+        result = quality_rows([row], date(2026, 7, 30), {"x"})
+        self.assertEqual(result[0]["status"], "PASS")
+        self.assertEqual(result[0]["detail"], "Dynamic active configuration; maximum 50")
 
     def test_portwatch_dynamic_field_mapping(self):
         area = Area(
@@ -174,6 +206,27 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(observation.other_cargo, 15)
         self.assertEqual(observation.unknown, 10)
 
+    def test_portwatch_rejects_ambiguous_shortest_contains_match(self):
+        provider = PortWatchProvider()
+        area = Area(
+            id="test",
+            name="Test",
+            source_name="Alpha",
+            type="port",
+            region="Asia",
+            lat=0,
+            lon=0,
+        )
+        with patch.object(
+            provider,
+            "_query",
+            return_value=[
+                {"portid": "1", "portname": "Alpha One"},
+                {"portid": "2", "portname": "Alpha Two"},
+            ],
+        ):
+            self.assertEqual(provider._resolve_source_ids((area,), "service"), {})
+
     def test_google_dashboard_data_keeps_selector_formulas(self):
         row = {
             "observation_date": "2026-07-17",
@@ -192,6 +245,7 @@ class CoreTests(unittest.TestCase):
             "avg_30d": 90,
             "change_7d": 100 / 95 - 1,
             "change_30d": 100 / 90 - 1,
+            "recent_status": "Above recent average",
             "availability": "available",
             "source": "IMF PortWatch",
             "source_url": "https://portwatch.imf.org/",
@@ -200,13 +254,46 @@ class CoreTests(unittest.TestCase):
             "straits": [row],
             "ports": [],
             "quality": [],
-            "areas": [],
+            "areas": [
+                {
+                    "id": "hormuz",
+                    "name": "Strait of Hormuz",
+                    "source_name": "Strait of Hormuz",
+                    "type": "strait",
+                    "region": "Middle East",
+                    "lat": 26.6,
+                    "lon": 56.3,
+                    "priority": True,
+                }
+            ],
             "runs": [],
+            "current_conditions": [
+                {
+                    **row,
+                    "lat": 26.6,
+                    "lon": 56.3,
+                    "priority": True,
+                    "imports_tons": None,
+                    "exports_tons": None,
+                }
+            ],
+            "map_data": [
+                {
+                    **row,
+                    "lat": 26.6,
+                    "lon": 56.3,
+                    "priority": True,
+                    "imports_tons": None,
+                    "exports_tons": None,
+                    "history_json": "[]",
+                }
+            ],
         }
         matrix = _sheet_values(payload)["Dashboard_Data"]
         self.assertEqual(matrix[1][0], "2026-07-17")
-        self.assertEqual(matrix[1][13], "2026-07-17")
-        self.assertTrue(matrix[1][15].startswith("=IF(Dashboard!$B$6"))
+        self.assertEqual(matrix[1][14], "2026-07-17")
+        self.assertTrue(matrix[1][16].startswith("=IF(Dashboard!$B$6"))
+        self.assertEqual(matrix[0][20], "Comparison date")
 
 
 if __name__ == "__main__":

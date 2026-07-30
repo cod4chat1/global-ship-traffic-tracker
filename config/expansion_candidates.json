@@ -1,0 +1,24 @@
+{
+  "areas": [
+    {"id": "singapore_strait", "name": "Singapore Strait", "source_name": "Singapore Strait", "type": "strait", "region": "Asia", "lat": 1.18, "lon": 103.8},
+    {"id": "dardanelles", "name": "Dardanelles", "source_name": "Dardanelles Strait", "type": "strait", "region": "Europe", "lat": 40.2, "lon": 26.4},
+    {"id": "danish_straits", "name": "Danish Straits", "source_name": "Danish Straits", "type": "strait", "region": "Europe", "lat": 56.0, "lon": 11.0},
+    {"id": "lombok", "name": "Lombok Strait", "source_name": "Lombok Strait", "type": "strait", "region": "Asia", "lat": -8.5, "lon": 115.75},
+    {"id": "sunda", "name": "Sunda Strait", "source_name": "Sunda Strait", "type": "strait", "region": "Asia", "lat": -5.9, "lon": 105.85},
+    {"id": "mozambique_channel", "name": "Mozambique Channel", "source_name": "Mozambique Channel", "type": "strait", "region": "Africa", "lat": -18.0, "lon": 41.5},
+    {"id": "savannah", "name": "Savannah", "source_name": "Savannah", "type": "port", "region": "North America", "lat": 32.08, "lon": -81.09},
+    {"id": "paranagua", "name": "Paranagua", "source_name": "Paranagua", "type": "port", "region": "South America", "lat": -25.5, "lon": -48.5},
+    {"id": "dumai", "name": "Dumai", "source_name": "Dumai", "type": "port", "region": "Asia", "lat": 1.68, "lon": 101.45},
+    {"id": "belawan", "name": "Belawan", "source_name": "Belawan", "type": "port", "region": "Asia", "lat": 3.78, "lon": 98.68},
+    {"id": "laem_chabang", "name": "Laem Chabang", "source_name": "Laem Chabang", "type": "port", "region": "Asia", "lat": 13.08, "lon": 100.88},
+    {"id": "cai_mep", "name": "Cai Mep", "source_name": "Cai Mep", "type": "port", "region": "Asia", "lat": 10.52, "lon": 107.0},
+    {"id": "jnpt", "name": "Nhava Sheva / JNPT", "source_name": "Nhava Sheva", "type": "port", "region": "Asia", "lat": 18.95, "lon": 72.95},
+    {"id": "mundra", "name": "Mundra", "source_name": "Mundra", "type": "port", "region": "Asia", "lat": 22.74, "lon": 69.7},
+    {"id": "chennai", "name": "Chennai", "source_name": "Chennai", "type": "port", "region": "Asia", "lat": 13.1, "lon": 80.3},
+    {"id": "colombo", "name": "Colombo", "source_name": "Colombo", "type": "port", "region": "Asia", "lat": 6.95, "lon": 79.84},
+    {"id": "durban", "name": "Durban", "source_name": "Durban", "type": "port", "region": "Africa", "lat": -29.87, "lon": 31.05},
+    {"id": "mombasa", "name": "Mombasa", "source_name": "Mombasa", "type": "port", "region": "Africa", "lat": -4.04, "lon": 39.67},
+    {"id": "vancouver", "name": "Vancouver", "source_name": "Vancouver", "type": "port", "region": "North America", "lat": 49.3, "lon": -123.1},
+    {"id": "port_hedland", "name": "Port Hedland", "source_name": "Port Hedland", "type": "port", "region": "Oceania", "lat": -20.31, "lon": 118.58}
+  ]
+}

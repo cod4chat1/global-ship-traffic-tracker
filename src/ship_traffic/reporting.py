@@ -55,6 +55,7 @@ def build_report_payload(
     target_date: date,
     generated_at: datetime,
 ) -> dict[str, Any]:
+    area_by_id = {area.id: area for area in config.areas}
     region_by_area = {area.id: area.region for area in config.areas}
     rows = [
         {**row, "region": region_by_area[row["area_id"]]}
@@ -69,6 +70,100 @@ def build_report_payload(
     current_ports = [
         row for row in ports if row["observation_date"] == target_date.isoformat()
     ]
+    current_by_id = {
+        row["area_id"]: row for row in current_straits + current_ports
+    }
+    history_by_id: dict[str, list[dict[str, Any]]] = {}
+    for row in sorted(rows, key=lambda item: item["observation_date"]):
+        history_by_id.setdefault(row["area_id"], []).append(
+            {"date": row["observation_date"], "total": row["total"]}
+        )
+
+    current_conditions: list[dict[str, Any]] = []
+    map_data: list[dict[str, Any]] = []
+    for area in config.areas:
+        row = current_by_id.get(area.id, {})
+        condition = {
+            "area_id": area.id,
+            "area_name": area.name,
+            "area_type": area.type,
+            "region": area.region,
+            "lat": area.lat,
+            "lon": area.lon,
+            "priority": area.priority,
+            "observation_date": row.get("observation_date"),
+            "total": row.get("total"),
+            "avg_7d": row.get("avg_7d"),
+            "avg_30d": row.get("avg_30d"),
+            "change_7d": row.get("change_7d"),
+            "change_30d": row.get("change_30d"),
+            "recent_status": row.get("recent_status", "Unavailable"),
+            "bulk_og": row.get("bulk_og"),
+            "bulk_non_og": row.get("bulk_non_og"),
+            "container": row.get("container"),
+            "other_cargo": row.get("other_cargo"),
+            "unknown": row.get("unknown"),
+            "imports_tons": row.get("imports_tons"),
+            "exports_tons": row.get("exports_tons"),
+            "availability": row.get("availability", "unavailable"),
+            "source": row.get("source", "IMF PortWatch"),
+            "source_url": row.get("source_url", "https://portwatch.imf.org/"),
+        }
+        current_conditions.append(condition)
+        map_data.append(
+            {
+                **condition,
+                "history_json": json.dumps(
+                    history_by_id.get(area.id, [])[-45:],
+                    separators=(",", ":"),
+                ),
+            }
+        )
+
+    regional_summary: list[dict[str, Any]] = []
+    regions = sorted({area.region for area in config.areas})
+    for region in regions:
+        for area_type in ("port", "strait"):
+            configured = [
+                area
+                for area in config.areas
+                if area.region == region and area.type == area_type
+            ]
+            if not configured:
+                continue
+            observed = [
+                current_by_id[area.id]
+                for area in configured
+                if area.id in current_by_id
+                and current_by_id[area.id].get("total") is not None
+            ]
+            regional_summary.append(
+                {
+                    "region": region,
+                    "area_type": area_type,
+                    "configured": len(configured),
+                    "observed": len(observed),
+                    "coverage": (
+                        round(len(observed) / len(configured), 4)
+                        if configured
+                        else None
+                    ),
+                    "total": round(
+                        sum(float(row["total"]) for row in observed), 2
+                    ),
+                }
+            )
+
+    movable = [
+        row
+        for row in current_conditions
+        if row["change_30d"] is not None
+    ]
+    top_movers = sorted(
+        movable,
+        key=lambda row: abs(float(row["change_30d"])),
+        reverse=True,
+    )[:10]
     return {
         "metadata": {
             "title": "Global Ship Traffic Tracker",
@@ -90,6 +185,7 @@ def build_report_payload(
                 "region": area.region,
                 "lat": area.lat,
                 "lon": area.lon,
+                "priority": area.priority,
             }
             for area in config.areas
         ],
@@ -97,6 +193,10 @@ def build_report_payload(
         "ports": ports,
         "current_straits": current_straits,
         "current_ports": current_ports,
+        "current_conditions": current_conditions,
+        "map_data": map_data,
+        "regional_summary": regional_summary,
+        "top_movers": top_movers,
         "quality": quality,
         "runs": runs,
     }
@@ -285,4 +385,3 @@ def write_outputs(
         artifacts["workbook"] = str(workbook)
     capture_screenshot(map_html, screenshot, script_root)
     return artifacts
-

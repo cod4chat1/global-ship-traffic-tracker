@@ -97,6 +97,9 @@ def run(args: argparse.Namespace) -> int:
             else:
                 report_date = target_date
         row_count = repository.upsert(observations)
+        report_start_date = report_date - timedelta(
+            days=max(1, args.history_days) - 1
+        )
         previous_report_date: date | None = None
         update_status = "new_data"
         if args.google and args.provider == "portwatch":
@@ -133,9 +136,19 @@ def run(args: argparse.Namespace) -> int:
                 )
                 return 0
 
+        if args.provider == "portwatch" and report_start_date < start_date:
+            backfill = provider.fetch(
+                config.areas,
+                report_start_date,
+                start_date - timedelta(days=1),
+            )
+            row_count += repository.upsert(backfill)
+
         source_name = "FixtureProvider" if args.provider == "fixture" else "IMF PortWatch"
         stored = repository.observations(
-            start_date.isoformat(), target_date.isoformat(), source=source_name
+            report_start_date.isoformat(),
+            report_date.isoformat(),
+            source=source_name,
         )
         enriched = enrich_rows(stored)
         quality = quality_rows(

@@ -6,6 +6,10 @@ from statistics import mean
 from typing import Any
 
 
+def _parse_row_date(row: dict[str, Any]) -> date:
+    return date.fromisoformat(str(row["observation_date"]))
+
+
 def _rolling_average(
     rows_by_area: dict[str, list[dict[str, Any]]],
     area_id: str,
@@ -13,19 +17,32 @@ def _rolling_average(
     days: int,
 ) -> float | None:
     start = target - timedelta(days=days - 1)
-    values = [
-        float(row["total"])
+    values_by_date = {
+        _parse_row_date(row): float(row["total"])
         for row in rows_by_area.get(area_id, [])
-        if start.isoformat() <= row["observation_date"] <= target.isoformat()
-        and row["total"] is not None
-    ]
-    return round(mean(values), 2) if values else None
+        if row["total"] is not None
+        and start <= _parse_row_date(row) <= target
+    }
+    required_dates = [start + timedelta(days=offset) for offset in range(days)]
+    if any(item not in values_by_date for item in required_dates):
+        return None
+    return round(mean(values_by_date[item] for item in required_dates), 2)
 
 
 def _percent_change(current: float | None, baseline: float | None) -> float | None:
     if current is None or baseline in (None, 0):
         return None
     return round((current - baseline) / baseline, 4)
+
+
+def _recent_status(change_30d: float | None) -> str:
+    if change_30d is None:
+        return "Insufficient data"
+    if change_30d > 0.10:
+        return "Above recent average"
+    if change_30d < -0.10:
+        return "Below recent average"
+    return "Near recent average"
 
 
 def enrich_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -42,6 +59,7 @@ def enrich_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         enriched["avg_30d"] = thirty_day
         enriched["change_7d"] = _percent_change(row["total"], seven_day)
         enriched["change_30d"] = _percent_change(row["total"], thirty_day)
+        enriched["recent_status"] = _recent_status(enriched["change_30d"])
         result.append(enriched)
     return result
 
@@ -58,12 +76,25 @@ def quality_rows(
         for row in current
         if row["unknown"] is not None and row["total"] not in (None, 0)
     ]
+    incomplete_7d = [
+        row["area_name"] for row in current if row.get("avg_7d") is None
+    ]
+    incomplete_30d = [
+        row["area_name"] for row in current if row.get("avg_30d") is None
+    ]
+    stale = [
+        row["area_name"]
+        for row in rows
+        if row["area_id"] in configured_area_ids
+        and row["observation_date"] < target_date.isoformat()
+        and row.get("availability") not in {"available", "fixture"}
+    ]
     return [
         {
             "check": "Configured areas",
-            "status": "PASS" if len(configured_area_ids) == 30 else "FAIL",
+            "status": "PASS" if 1 <= len(configured_area_ids) <= 50 else "FAIL",
             "value": len(configured_area_ids),
-            "detail": "Expected 10 straits and 20 ports",
+            "detail": "Dynamic active configuration; maximum 50",
         },
         {
             "check": "Areas observed on target date",
@@ -78,6 +109,24 @@ def quality_rows(
             "detail": ", ".join(partial) if partial else "None",
         },
         {
+            "check": "Incomplete 7-day windows",
+            "status": "PASS" if not incomplete_7d else "WARN",
+            "value": len(incomplete_7d),
+            "detail": ", ".join(incomplete_7d) if incomplete_7d else "None",
+        },
+        {
+            "check": "Incomplete 30-day windows",
+            "status": "PASS" if not incomplete_30d else "WARN",
+            "value": len(incomplete_30d),
+            "detail": ", ".join(incomplete_30d) if incomplete_30d else "None",
+        },
+        {
+            "check": "Stale/unavailable historical rows",
+            "status": "PASS" if not stale else "WARN",
+            "value": len(stale),
+            "detail": ", ".join(sorted(set(stale))) if stale else "None",
+        },
+        {
             "check": "Average unknown share",
             "status": "PASS" if not unknown_values or mean(unknown_values) <= 0.15 else "WARN",
             "value": round(mean(unknown_values), 4) if unknown_values else 0.0,
@@ -90,5 +139,3 @@ def quality_rows(
             "detail": "Requires licensed vessel-level AIS positions and port geofences",
         },
     ]
-
-

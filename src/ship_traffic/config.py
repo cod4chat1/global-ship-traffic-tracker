@@ -31,14 +31,23 @@ def load_config(path: str | Path) -> AppConfig:
     invalid = sorted({area.type for area in areas} - {"port", "strait"})
     if invalid:
         raise ValueError(f"Unsupported area types: {', '.join(invalid)}")
-    if len([area for area in areas if area.type == "strait"]) != 10:
-        raise ValueError("The MVP configuration must contain exactly 10 straits")
-    if len([area for area in areas if area.type == "port"]) != 20:
-        raise ValueError("The MVP configuration must contain exactly 20 ports")
+    if not areas:
+        raise ValueError("At least one active area is required")
+    if len(areas) > 50:
+        raise ValueError("The active configuration cannot exceed 50 areas")
+    invalid_coordinates = [
+        area.id
+        for area in areas
+        if not (-90 <= area.lat <= 90 and -180 <= area.lon <= 180)
+    ]
+    if invalid_coordinates:
+        raise ValueError(
+            "Invalid coordinates for: " + ", ".join(invalid_coordinates)
+        )
+    if len([area for area in areas if area.priority]) > 16:
+        raise ValueError("At most 16 areas may be marked as dashboard priorities")
     return AppConfig(
         timezone=str(data.get("timezone", "Asia/Kuala_Lumpur")),
         snapshot_time=str(data.get("snapshot_time", "08:00")),
         areas=areas,
     )
-
-
