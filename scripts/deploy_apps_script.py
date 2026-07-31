@@ -71,6 +71,16 @@ def main() -> None:
             ),
         },
         {
+            "name": "D3Code1",
+            "type": "SERVER_JS",
+            "source": (source_dir / "D3Code1.gs").read_text(encoding="utf-8"),
+        },
+        {
+            "name": "D3Code2",
+            "type": "SERVER_JS",
+            "source": (source_dir / "D3Code2.gs").read_text(encoding="utf-8"),
+        },
+        {
             "name": "appsscript",
             "type": "JSON",
             "source": (source_dir / "appsscript.json").read_text(

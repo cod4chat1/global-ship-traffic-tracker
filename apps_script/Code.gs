@@ -6,10 +6,17 @@ function onOpen() {
 }
 
 function showShippingMap() {
-  const html = HtmlService.createHtmlOutputFromFile("ShippingMap")
+  const html = HtmlService.createTemplateFromFile("ShippingMap").evaluate()
     .setWidth(1200)
     .setHeight(760);
   SpreadsheetApp.getUi().showModalDialog(html, "Global Shipping Activity Map");
+}
+
+function getD3SourceLiteral() {
+  return JSON.stringify(D3_CODE_1 + D3_CODE_2)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
 }
 
 function getShippingMapData() {

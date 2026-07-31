@@ -91,6 +91,11 @@ def build_report_payload(
             "lat": area.lat,
             "lon": area.lon,
             "priority": area.priority,
+            "geometry_type": area.geometry_type,
+            "geometry_json": json.dumps(area.geometry, separators=(",", ":")),
+            "coordinate_source": area.coordinate_source,
+            "coordinate_verified_on": area.coordinate_verified_on,
+            "coordinate_note": area.coordinate_note,
             "observation_date": row.get("observation_date"),
             "total": row.get("total"),
             "avg_7d": row.get("avg_7d"),
@@ -186,6 +191,11 @@ def build_report_payload(
                 "lat": area.lat,
                 "lon": area.lon,
                 "priority": area.priority,
+                "geometry_type": area.geometry_type,
+                "geometry": area.geometry,
+                "coordinate_source": area.coordinate_source,
+                "coordinate_verified_on": area.coordinate_verified_on,
+                "coordinate_note": area.coordinate_note,
             }
             for area in config.areas
         ],

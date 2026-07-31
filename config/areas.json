@@ -2,50 +2,905 @@
   "timezone": "Asia/Kuala_Lumpur",
   "snapshot_time": "08:00",
   "areas": [
-    {"id": "malacca", "name": "Malacca Strait", "source_name": "Malacca Strait", "type": "strait", "region": "Asia", "lat": 3.2, "lon": 100.4, "priority": true},
-    {"id": "cape_good_hope", "name": "Cape of Good Hope", "source_name": "Cape of Good Hope", "type": "strait", "region": "Africa", "lat": -34.35, "lon": 18.48},
-    {"id": "hormuz", "name": "Strait of Hormuz", "source_name": "Strait of Hormuz", "type": "strait", "region": "Middle East", "lat": 26.6, "lon": 56.3, "priority": true},
-    {"id": "bab_el_mandeb", "name": "Bab el-Mandeb", "source_name": "Bab el-Mandeb Strait", "type": "strait", "region": "Middle East", "lat": 12.6, "lon": 43.3, "priority": true},
-    {"id": "suez", "name": "Suez Canal", "source_name": "Suez Canal", "type": "strait", "region": "Middle East", "lat": 30.5, "lon": 32.3, "priority": true},
-    {"id": "panama", "name": "Panama Canal", "source_name": "Panama Canal", "type": "strait", "region": "North America", "lat": 9.1, "lon": -79.7, "priority": true},
-    {"id": "gibraltar", "name": "Strait of Gibraltar", "source_name": "Gibraltar Strait", "type": "strait", "region": "Europe", "lat": 35.9, "lon": -5.6},
-    {"id": "bosporus", "name": "Bosporus", "source_name": "Bosporus Strait", "type": "strait", "region": "Europe", "lat": 41.1, "lon": 29.1},
-    {"id": "english_channel", "name": "English Channel", "source_name": "Dover Strait", "type": "strait", "region": "Europe", "lat": 50.2, "lon": -1.0},
-    {"id": "taiwan_strait", "name": "Taiwan Strait", "source_name": "Taiwan Strait", "type": "strait", "region": "Asia", "lat": 24.2, "lon": 119.5, "priority": true},
-
-    {"id": "singapore", "name": "Singapore", "source_name": "Singapore", "type": "port", "region": "Asia", "lat": 1.27, "lon": 103.84, "priority": true},
-    {"id": "port_klang", "name": "Port Klang", "source_name": "Port Klang", "type": "port", "region": "Asia", "lat": 3.0, "lon": 101.4},
-    {"id": "tanjung_pelepas", "name": "Tanjung Pelepas", "source_name": "Tanjung Pelepas", "type": "port", "region": "Asia", "lat": 1.36, "lon": 103.55},
-    {"id": "rotterdam", "name": "Rotterdam", "source_name": "Rotterdam", "type": "port", "region": "Europe", "lat": 51.95, "lon": 4.14, "priority": true},
-    {"id": "antwerp_bruges", "name": "Antwerp-Bruges", "source_name": "Antwerp", "type": "port", "region": "Europe", "lat": 51.27, "lon": 4.4},
-    {"id": "hamburg", "name": "Hamburg", "source_name": "Hamburg", "type": "port", "region": "Europe", "lat": 53.54, "lon": 9.95},
-    {"id": "shanghai", "name": "Shanghai", "source_name": "Shanghai", "type": "port", "region": "Asia", "lat": 31.2, "lon": 121.5, "priority": true},
-    {"id": "ningbo_zhoushan", "name": "Ningbo-Zhoushan", "source_name": "Ningbo-Zhoushan", "type": "port", "region": "Asia", "lat": 29.9, "lon": 121.9, "priority": true},
-    {"id": "shenzhen", "name": "Shenzhen", "source_name": "Shenzhen", "type": "port", "region": "Asia", "lat": 22.5, "lon": 114.0},
-    {"id": "qingdao", "name": "Qingdao", "source_name": "Qingdao", "type": "port", "region": "Asia", "lat": 36.1, "lon": 120.3},
-    {"id": "busan", "name": "Busan", "source_name": "Busan", "type": "port", "region": "Asia", "lat": 35.1, "lon": 129.0},
-    {"id": "jebel_ali", "name": "Jebel Ali", "source_name": "Jebel Ali", "type": "port", "region": "Middle East", "lat": 25.0, "lon": 55.05, "priority": true},
-    {"id": "fujairah", "name": "Fujairah", "source_name": "Fujairah", "type": "port", "region": "Middle East", "lat": 25.14, "lon": 56.36, "priority": true},
-    {"id": "ras_tanura", "name": "Ras Tanura", "source_name": "Ras Tanura", "type": "port", "region": "Middle East", "lat": 26.65, "lon": 50.16, "priority": true},
-    {"id": "houston", "name": "Houston", "source_name": "Houston", "type": "port", "region": "North America", "lat": 29.73, "lon": -95.27, "priority": true},
-    {"id": "new_york_new_jersey", "name": "New York–New Jersey", "source_name": "New York", "type": "port", "region": "North America", "lat": 40.67, "lon": -74.05},
-    {"id": "los_angeles", "name": "Los Angeles", "source_name": "Los Angeles", "type": "port", "region": "North America", "lat": 33.74, "lon": -118.27, "priority": true},
-    {"id": "long_beach", "name": "Long Beach", "source_name": "Long Beach", "type": "port", "region": "North America", "lat": 33.75, "lon": -118.22},
-    {"id": "santos", "name": "Santos", "source_name": "Santos", "type": "port", "region": "South America", "lat": -23.95, "lon": -46.33, "priority": true},
-    {"id": "tanjung_priok", "name": "Tanjung Priok", "source_name": "Tanjung Priok", "type": "port", "region": "Asia", "lat": -6.1, "lon": 106.88},
-    {"id": "lombok", "name": "Lombok Strait", "source_name": "Lombok Strait", "type": "strait", "region": "Asia", "lat": -8.5, "lon": 115.75},
-    {"id": "sunda", "name": "Sunda Strait", "source_name": "Sunda Strait", "type": "strait", "region": "Asia", "lat": -5.9, "lon": 105.85},
-    {"id": "savannah", "name": "Savannah", "source_name": "Savannah", "type": "port", "region": "North America", "lat": 32.08, "lon": -81.09},
-    {"id": "paranagua", "name": "Paranagua", "source_name": "Paranagua", "type": "port", "region": "South America", "lat": -25.5, "lon": -48.5},
-    {"id": "dumai", "name": "Dumai", "source_name": "Dumai", "type": "port", "region": "Asia", "lat": 1.68, "lon": 101.45},
-    {"id": "belawan", "name": "Belawan", "source_name": "Belawan", "type": "port", "region": "Asia", "lat": 3.78, "lon": 98.68},
-    {"id": "laem_chabang", "name": "Laem Chabang", "source_name": "Laem Chabang", "type": "port", "region": "Asia", "lat": 13.08, "lon": 100.88},
-    {"id": "cai_mep", "name": "Cai Mep", "source_name": "Cai Mep", "type": "port", "region": "Asia", "lat": 10.52, "lon": 107.0},
-    {"id": "mundra", "name": "Mundra", "source_name": "Mundra", "type": "port", "region": "Asia", "lat": 22.74, "lon": 69.7},
-    {"id": "chennai", "name": "Chennai", "source_name": "Chennai", "type": "port", "region": "Asia", "lat": 13.1, "lon": 80.3},
-    {"id": "colombo", "name": "Colombo", "source_name": "Colombo", "type": "port", "region": "Asia", "lat": 6.95, "lon": 79.84},
-    {"id": "durban", "name": "Durban", "source_name": "Durban", "type": "port", "region": "Africa", "lat": -29.87, "lon": 31.05},
-    {"id": "mombasa", "name": "Mombasa", "source_name": "Mombasa", "type": "port", "region": "Africa", "lat": -4.04, "lon": 39.67},
-    {"id": "port_hedland", "name": "Port Hedland", "source_name": "Port Hedland", "type": "port", "region": "Oceania", "lat": -20.31, "lon": 118.58}
+    {
+      "id": "malacca",
+      "name": "Malacca Strait",
+      "source_name": "Malacca Strait",
+      "type": "strait",
+      "region": "Asia",
+      "lat": 1.516954817,
+      "lon": 102.6651061,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          98.85,
+          5.75
+        ],
+        [
+          103.2,
+          1.0
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "cape_good_hope",
+      "name": "Cape of Good Hope",
+      "source_name": "Cape of Good Hope",
+      "type": "strait",
+      "region": "Africa",
+      "lat": -34.92728556,
+      "lon": 20.88273666,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          18.1,
+          -34.55
+        ],
+        [
+          22.2,
+          -35.0
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "hormuz",
+      "name": "Strait of Hormuz",
+      "source_name": "Strait of Hormuz",
+      "type": "strait",
+      "region": "Middle East",
+      "lat": 26.29685349,
+      "lon": 56.85984844,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          55.65,
+          26.65
+        ],
+        [
+          57.45,
+          25.95
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "bab_el_mandeb",
+      "name": "Bab el-Mandeb",
+      "source_name": "Bab el-Mandeb Strait",
+      "type": "strait",
+      "region": "Middle East",
+      "lat": 12.78859715,
+      "lon": 43.34954476,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          42.65,
+          13.05
+        ],
+        [
+          43.85,
+          12.35
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "suez",
+      "name": "Suez Canal",
+      "source_name": "Suez Canal",
+      "type": "strait",
+      "region": "Middle East",
+      "lat": 30.59334599,
+      "lon": 32.43688221,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          32.3,
+          31.3
+        ],
+        [
+          32.55,
+          29.9
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "panama",
+      "name": "Panama Canal",
+      "source_name": "Panama Canal",
+      "type": "strait",
+      "region": "North America",
+      "lat": 9.120512367,
+      "lon": -79.76723825,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          -79.93,
+          9.33
+        ],
+        [
+          -79.55,
+          8.88
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "gibraltar",
+      "name": "Strait of Gibraltar",
+      "source_name": "Gibraltar Strait",
+      "type": "strait",
+      "region": "Europe",
+      "lat": 35.94227416,
+      "lon": -5.754895722,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          -6.15,
+          35.93
+        ],
+        [
+          -5.3,
+          35.95
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "bosporus",
+      "name": "Bosporus",
+      "source_name": "Bosporus Strait",
+      "type": "strait",
+      "region": "Europe",
+      "lat": 41.16928167,
+      "lon": 29.09150126,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          28.95,
+          41.24
+        ],
+        [
+          29.16,
+          41.04
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "english_channel",
+      "name": "English Channel",
+      "source_name": "Dover Strait",
+      "type": "strait",
+      "region": "Europe",
+      "lat": 51.03022414,
+      "lon": 1.505839717,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          1.0,
+          51.22
+        ],
+        [
+          1.95,
+          50.82
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "taiwan_strait",
+      "name": "Taiwan Strait",
+      "source_name": "Taiwan Strait",
+      "type": "strait",
+      "region": "Asia",
+      "lat": 24.72350972,
+      "lon": 119.8313644,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          118.65,
+          23.1
+        ],
+        [
+          120.55,
+          25.9
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "source_name": "Singapore",
+      "type": "port",
+      "region": "Asia",
+      "lat": 1.271989257,
+      "lon": 103.7074816,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          103.7074816,
+          1.271989257
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "port_klang",
+      "name": "Port Klang",
+      "source_name": "Port Klang",
+      "type": "port",
+      "region": "Asia",
+      "lat": 2.972594826,
+      "lon": 101.3403063,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          101.3403063,
+          2.972594826
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "tanjung_pelepas",
+      "name": "Tanjung Pelepas",
+      "source_name": "Tanjung Pelepas",
+      "type": "port",
+      "region": "Asia",
+      "lat": 1.349982803,
+      "lon": 103.5464032,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          103.5464032,
+          1.349982803
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "rotterdam",
+      "name": "Rotterdam",
+      "source_name": "Rotterdam",
+      "type": "port",
+      "region": "Europe",
+      "lat": 51.92228121,
+      "lon": 4.215144967,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          4.215144967,
+          51.92228121
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "antwerp_bruges",
+      "name": "Antwerp-Bruges",
+      "source_name": "Antwerp",
+      "type": "port",
+      "region": "Europe",
+      "lat": 51.27935494,
+      "lon": 4.317802311,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          4.317802311,
+          51.27935494
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "hamburg",
+      "name": "Hamburg",
+      "source_name": "Hamburg",
+      "type": "port",
+      "region": "Europe",
+      "lat": 53.51640056,
+      "lon": 9.964294338,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          9.964294338,
+          53.51640056
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "shanghai",
+      "name": "Shanghai",
+      "source_name": "Shanghai",
+      "type": "port",
+      "region": "Asia",
+      "lat": 31.19179536,
+      "lon": 121.6441968,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          121.6441968,
+          31.19179536
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "ningbo_zhoushan",
+      "name": "Ningbo-Zhoushan",
+      "source_name": "Ningbo-Zhoushan",
+      "type": "port",
+      "region": "Asia",
+      "lat": 29.92076897,
+      "lon": 121.8818408,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          121.8818408,
+          29.92076897
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "shenzhen",
+      "name": "Shenzhen",
+      "source_name": "Shenzhen",
+      "type": "port",
+      "region": "Asia",
+      "lat": 22.58146762,
+      "lon": 113.8103377,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          113.8103377,
+          22.58146762
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "qingdao",
+      "name": "Qingdao",
+      "source_name": "Qingdao",
+      "type": "port",
+      "region": "Asia",
+      "lat": 36.02677905,
+      "lon": 120.2226181,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          120.2226181,
+          36.02677905
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "busan",
+      "name": "Busan",
+      "source_name": "Busan",
+      "type": "port",
+      "region": "Asia",
+      "lat": 35.08955067,
+      "lon": 128.9385952,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          128.9385952,
+          35.08955067
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "jebel_ali",
+      "name": "Jebel Ali",
+      "source_name": "Jebel Ali",
+      "type": "port",
+      "region": "Middle East",
+      "lat": 24.99941947,
+      "lon": 55.07781687,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          55.07781687,
+          24.99941947
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "fujairah",
+      "name": "Fujairah",
+      "source_name": "Fujairah",
+      "type": "port",
+      "region": "Middle East",
+      "lat": 25.20017278,
+      "lon": 56.35942059,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          56.35942059,
+          25.20017278
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "ras_tanura",
+      "name": "Ras Tanura",
+      "source_name": "Ras Tanura",
+      "type": "port",
+      "region": "Middle East",
+      "lat": 26.67168923,
+      "lon": 50.12291543,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          50.12291543,
+          26.67168923
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "houston",
+      "name": "Houston",
+      "source_name": "Houston",
+      "type": "port",
+      "region": "North America",
+      "lat": 29.72023114,
+      "lon": -95.13978774,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          -95.13978774,
+          29.72023114
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "new_york_new_jersey",
+      "name": "New York–New Jersey",
+      "source_name": "New York",
+      "type": "port",
+      "region": "North America",
+      "lat": 40.63298387,
+      "lon": -74.17942126,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          -74.17942126,
+          40.63298387
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "los_angeles",
+      "name": "Los Angeles",
+      "source_name": "Los Angeles",
+      "type": "port",
+      "region": "North America",
+      "lat": 33.75569193,
+      "lon": -118.2437881,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          -118.2437881,
+          33.75569193
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "long_beach",
+      "name": "Long Beach",
+      "source_name": "Long Beach",
+      "type": "port",
+      "region": "North America",
+      "lat": 33.75569193,
+      "lon": -118.2437881,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          -118.2437881,
+          33.75569193
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "santos",
+      "name": "Santos",
+      "source_name": "Santos",
+      "type": "port",
+      "region": "South America",
+      "lat": -23.91706787,
+      "lon": -46.33656353,
+      "priority": true,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          -46.33656353,
+          -23.91706787
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "tanjung_priok",
+      "name": "Tanjung Priok",
+      "source_name": "Tanjung Priok",
+      "type": "port",
+      "region": "Asia",
+      "lat": -6.100544627,
+      "lon": 106.9054876,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          106.9054876,
+          -6.100544627
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "lombok",
+      "name": "Lombok Strait",
+      "source_name": "Lombok Strait",
+      "type": "strait",
+      "region": "Asia",
+      "lat": -8.41914514129252,
+      "lon": 115.801433044024,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          115.72,
+          -8.15
+        ],
+        [
+          115.9,
+          -8.85
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "sunda",
+      "name": "Sunda Strait",
+      "source_name": "Sunda Strait",
+      "type": "strait",
+      "region": "Asia",
+      "lat": -5.96684057041462,
+      "lon": 105.775219888066,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "corridor",
+      "geometry": [
+        [
+          105.45,
+          -5.45
+        ],
+        [
+          106.08,
+          -6.25
+        ]
+      ],
+      "coordinate_note": "PortWatch source point with a navigational-axis indicator; the corridor is not a counting geofence or legal boundary."
+    },
+    {
+      "id": "savannah",
+      "name": "Savannah",
+      "source_name": "Savannah",
+      "type": "port",
+      "region": "North America",
+      "lat": 32.10402454,
+      "lon": -81.10052022,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          -81.10052022,
+          32.10402454
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "paranagua",
+      "name": "Paranagua",
+      "source_name": "Paranagua",
+      "type": "port",
+      "region": "South America",
+      "lat": -25.50523872,
+      "lon": -48.51713504,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          -48.51713504,
+          -25.50523872
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "dumai",
+      "name": "Dumai",
+      "source_name": "Dumai",
+      "type": "port",
+      "region": "Asia",
+      "lat": 1.717388504,
+      "lon": 101.4188235,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          101.4188235,
+          1.717388504
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "belawan",
+      "name": "Belawan",
+      "source_name": "Belawan",
+      "type": "port",
+      "region": "Asia",
+      "lat": 3.78854271,
+      "lon": 98.70736598,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          98.70736598,
+          3.78854271
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "laem_chabang",
+      "name": "Laem Chabang",
+      "source_name": "Laem Chabang",
+      "type": "port",
+      "region": "Asia",
+      "lat": 13.0887337,
+      "lon": 100.8999916,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          100.8999916,
+          13.0887337
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "cai_mep",
+      "name": "Cai Mep",
+      "source_name": "Cai Mep",
+      "type": "port",
+      "region": "Asia",
+      "lat": 10.57169836,
+      "lon": 107.02606,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          107.02606,
+          10.57169836
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "mundra",
+      "name": "Mundra",
+      "source_name": "Mundra",
+      "type": "port",
+      "region": "Asia",
+      "lat": 22.76296998,
+      "lon": 69.6220188,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          69.6220188,
+          22.76296998
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "chennai",
+      "name": "Chennai",
+      "source_name": "Chennai",
+      "type": "port",
+      "region": "Asia",
+      "lat": 13.10046724,
+      "lon": 80.29425074,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          80.29425074,
+          13.10046724
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "colombo",
+      "name": "Colombo",
+      "source_name": "Colombo",
+      "type": "port",
+      "region": "Asia",
+      "lat": 6.949982173,
+      "lon": 79.8397869,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          79.8397869,
+          6.949982173
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "durban",
+      "name": "Durban",
+      "source_name": "Durban",
+      "type": "port",
+      "region": "Africa",
+      "lat": -29.88212961,
+      "lon": 31.02302243,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          31.02302243,
+          -29.88212961
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "mombasa",
+      "name": "Mombasa",
+      "source_name": "Mombasa",
+      "type": "port",
+      "region": "Africa",
+      "lat": -4.048091983,
+      "lon": 39.6344671,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          39.6344671,
+          -4.048091983
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    },
+    {
+      "id": "port_hedland",
+      "name": "Port Hedland",
+      "source_name": "Port Hedland",
+      "type": "port",
+      "region": "Oceania",
+      "lat": -20.33066003,
+      "lon": 118.5643416,
+      "coordinate_source": "IMF PortWatch ArcGIS database (source point)",
+      "coordinate_verified_on": "2026-07-31",
+      "geometry_type": "point",
+      "geometry": [
+        [
+          118.5643416,
+          -20.33066003
+        ]
+      ],
+      "coordinate_note": "PortWatch port-centre point; not a terminal or anchorage boundary."
+    }
   ]
 }

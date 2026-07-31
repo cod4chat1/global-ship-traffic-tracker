@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root { --ink:#102235; --muted:#60758a; --line:#d8e1ea; --sea:#edf6fb; --land:#cbd9d2; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); font:13px Arial,sans-serif; background:#fff; }
+    header { display:flex; align-items:end; justify-content:space-between; padding:14px 18px 10px; border-bottom:1px solid var(--line); }
+    h1 { margin:0; font-size:20px; }
+    .sub { color:var(--muted); margin-top:4px; }
+    .controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    select,button { border:1px solid #b8c7d5; border-radius:6px; background:#fff; padding:7px 9px; color:var(--ink); }
+    select { padding-right:28px; }
+    button { cursor:pointer; font-weight:600; }
+    button:hover { background:#f1f6f9; }
+    main { display:grid; grid-template-columns:minmax(0,1fr) 300px; height:680px; }
+    .map-wrap { position:relative; overflow:hidden; background:var(--sea); }
+    svg { width:100%; height:100%; display:block; touch-action:none; }
+    .sphere { fill:#edf6fb; stroke:#b7cbd7; stroke-width:1; }
+    .graticule { fill:none; stroke:#d6e7f0; stroke-width:.7; vector-effect:non-scaling-stroke; }
+    .land { fill:var(--land); stroke:#91aa9f; stroke-width:.7; vector-effect:non-scaling-stroke; }
+    .port-marker,.strait-marker,.corridor { cursor:pointer; opacity:.92; }
+    .port-marker,.strait-marker { stroke:#fff; stroke-width:1.5; vector-effect:non-scaling-stroke; }
+    .corridor { fill:none; stroke:#dc8a16; stroke-width:4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+    .corridor-hit { fill:none; stroke:transparent; stroke-width:14; cursor:pointer; vector-effect:non-scaling-stroke; }
+    .port-marker:hover,.strait-marker:hover { opacity:1; stroke:#102235; stroke-width:2.2; }
+    .corridor:hover { opacity:1; stroke:#102235; stroke-width:5; }
+    .tooltip { position:absolute; display:none; pointer-events:none; max-width:310px; padding:10px 11px; border-radius:7px; background:rgba(16,34,53,.96); color:#fff; box-shadow:0 5px 18px #0003; line-height:1.45; z-index:4; }
+    aside { border-left:1px solid var(--line); padding:16px; overflow:auto; }
+    aside h2 { margin:0 0 10px; font-size:17px; }
+    .empty { color:var(--muted); line-height:1.5; }
+    .metric { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid #edf1f5; }
+    .metric span { color:var(--muted); }
+    .metric strong { text-align:right; }
+    .status { margin:10px 0; padding:8px; border-radius:6px; background:#f3f6f8; }
+    .geo-note { margin-top:9px; color:var(--muted); font-size:11px; line-height:1.45; }
+    .warning { margin-top:12px; padding:9px; border-left:3px solid #e9a23b; background:#fff8e8; color:#744d0f; line-height:1.45; }
+    #spark { width:100%; height:90px; margin-top:10px; background:#f8fafc; }
+    .legend { position:absolute; left:14px; bottom:12px; display:flex; gap:12px; background:#fffffff0; padding:7px 9px; border-radius:6px; border:1px solid var(--line); color:var(--muted); }
+    .key { display:inline-flex; align-items:center; gap:5px; }
+    .circle { width:10px; height:10px; border-radius:50%; background:#2878b5; }
+    .line-key { width:18px; height:4px; border-radius:2px; background:#dc8a16; }
+    .map-tools { position:absolute; top:12px; left:12px; display:flex; gap:5px; z-index:3; }
+    .map-tools button { width:34px; height:32px; padding:0; background:#fffffff2; font-size:16px; }
+    .attribution { position:absolute; right:8px; bottom:7px; color:#60758a; font-size:10px; background:#ffffffcc; padding:3px 5px; border-radius:3px; }
+    .loading { padding:30px; color:var(--muted); }
+    .error { margin:30px; padding:14px; background:#fff1f1; color:#8a1d1d; border:1px solid #efc5c5; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>Global shipping activity</h1><div class="sub">IMF PortWatch · verified source coordinates · hover for detail, click to pin 45-day trend</div></div>
+    <div class="controls">
+      <select id="type"><option>Both</option><option>Ports</option><option>Straits</option></select>
+      <select id="region"><option>All regions</option></select>
+      <select id="metric">
+        <option value="Total activity">Total activity</option>
+        <option value="Change vs 7-day">Change vs 7-day</option>
+        <option value="Change vs 30-day">Change vs 30-day</option>
+        <option value="Bulk O&G">Bulk O&amp;G</option>
+        <option value="Container">Container</option>
+      </select>
+    </div>
+  </header>
+  <main>
+    <section class="map-wrap" id="mapWrap">
+      <div class="loading" id="loading">Loading geographic map…</div>
+      <svg id="map" viewBox="0 0 900 520" aria-label="Projected world shipping activity map" hidden></svg>
+      <div class="map-tools" id="mapTools" hidden><button id="zoomIn" title="Zoom in">+</button><button id="zoomOut" title="Zoom out">−</button><button id="reset" title="Reset world view">↺</button></div>
+      <div id="tooltip" class="tooltip"></div>
+      <div class="legend"><span class="key"><i class="circle"></i>Port</span><span class="key"><i class="line-key"></i>Strait/canal corridor</span><span>Size = activity</span></div>
+      <div class="attribution">Basemap: Natural Earth 1:110m · Projection: Equal Earth</div>
+    </section>
+    <aside id="detail"><div class="empty">Select a port or strait to pin its latest statistics and trend.</div></aside>
+  </main>
+<script>(0, eval)(<?!= getD3SourceLiteral(); ?>);</script>
+<script>
+  const LAND = /*__LAND_GEOJSON__*/;
+  let rows = [];
+  const width = 900, height = 520;
+  const svg = d3.select("#map");
+  const tooltip = document.getElementById("tooltip");
+  const wrap = document.getElementById("mapWrap");
+  const detail = document.getElementById("detail");
+  const projection = d3.geoEqualEarth().fitExtent([[18,18],[width-18,height-18]], LAND);
+  const path = d3.geoPath(projection);
+  const viewport = svg.append("g").attr("id","viewport");
+  const base = viewport.append("g").attr("id","base");
+  const markers = viewport.append("g").attr("id","markers");
+  const n = value => value === "" || value == null ? null : Number(value);
+  const fmt = value => n(value) == null ? "Unavailable" : n(value).toLocaleString(undefined,{maximumFractionDigits:1});
+  const pct = value => n(value) == null ? "Insufficient data" : `${(n(value)*100).toFixed(1)}%`;
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const coords = row => `${Number(row.Latitude).toFixed(4)}°, ${Number(row.Longitude).toFixed(4)}°`;
+  const zoom = d3.zoom().scaleExtent([1,8]).translateExtent([[0,0],[width,height]]).extent([[0,0],[width,height]]).on("zoom", event => viewport.attr("transform",event.transform));
+  svg.call(zoom);
+
+  function drawBase() {
+    if (!LAND || !Array.isArray(LAND.features) || !LAND.features.length) throw new Error("Bundled Natural Earth basemap is unavailable.");
+    base.append("path").datum({type:"Sphere"}).attr("class","sphere").attr("d",path);
+    base.append("path").datum(d3.geoGraticule10()).attr("class","graticule").attr("d",path);
+    base.selectAll("path.land").data(LAND.features).join("path").attr("class","land").attr("d",path);
+  }
+
+  function color(row, metric) {
+    if (row.Availability !== "available" && row.Availability !== "fixture") return "#8b98a5";
+    if (metric === "Total activity") return row.Type === "port" ? "#2878b5" : "#dc8a16";
+    const raw = metric === "Bulk O&G" || metric === "Container" ? n(row[metric]) / Math.max(1,n(row["Total activity"])) : n(row[metric]);
+    if (raw == null || Number.isNaN(raw)) return "#8b98a5";
+    if (metric.startsWith("Change")) return raw > .10 ? "#bf3b35" : raw < -.10 ? "#25835b" : "#d9a21b";
+    return raw > .35 ? "#6f3fa0" : raw > .2 ? "#3878bd" : "#7ba9c8";
+  }
+
+  function filtered() {
+    const type = document.getElementById("type").value;
+    const region = document.getElementById("region").value;
+    return rows.filter(row => (type === "Both" || (type === "Ports" && row.Type === "port") || (type === "Straits" && row.Type === "strait")) && (region === "All regions" || row.Region === region));
+  }
+
+  function geometry(row) {
+    try {
+      const value=JSON.parse(row["Geometry JSON"] || "[]");
+      return Array.isArray(value) ? value : [];
+    } catch(error) { return []; }
+  }
+
+  function hoverHtml(row) {
+    return `<strong>${esc(row.Name)}</strong> · ${esc(row.Type)}<br>${esc(row.Region)} · ${esc(row["Observation date"])}<br>` +
+      `Coordinates: ${esc(coords(row))}<br>Activity: ${fmt(row["Total activity"])} · 7d: ${fmt(row["7-day average"])} · 30d: ${fmt(row["30-day average"])}<br>` +
+      `Vs 7d: ${pct(row["Change vs 7-day"])} · Vs 30d: ${pct(row["Change vs 30-day"])}<br>` +
+      `Bulk O&G: ${fmt(row["Bulk O&G"])} · Container: ${fmt(row.Container)}<br>${esc(row["Recent status"])} · ${esc(row.Availability)}`;
+  }
+
+  function attachInteraction(selection,row) {
+    selection.on("mousemove", event => {
+      tooltip.innerHTML=hoverHtml(row); tooltip.style.display="block";
+      const rect=wrap.getBoundingClientRect(); tooltip.style.left=`${Math.min(event.clientX-rect.left+12,rect.width-320)}px`; tooltip.style.top=`${Math.max(8,event.clientY-rect.top-70)}px`;
+    }).on("mouseleave",()=>tooltip.style.display="none").on("click",event=>{event.stopPropagation();pin(row);});
+  }
+
+  function render() {
+    markers.selectAll("*").remove();
+    const metric = document.getElementById("metric").value;
+    filtered().forEach(row => {
+      if (!Number.isFinite(Number(row.Latitude)) || !Number.isFinite(Number(row.Longitude))) return;
+      const point=projection([Number(row.Longitude),Number(row.Latitude)]); if(!point) return;
+      const value=Math.max(0,n(row["Total activity"])||0), size=Math.max(4,Math.min(13,4+Math.sqrt(value)/3));
+      if(row.Type === "strait") {
+        const line=geometry(row);
+        if(line.length>=2) {
+          const corridor=markers.append("path").datum({type:"LineString",coordinates:line}).attr("class","corridor").attr("d",path).attr("stroke",color(row,metric));
+          const hit=markers.append("path").datum({type:"LineString",coordinates:line}).attr("class","corridor-hit").attr("d",path);
+          attachInteraction(corridor,row); attachInteraction(hit,row);
+        }
+        const diamond=markers.append("rect").attr("class","strait-marker").attr("x",point[0]-size*.55).attr("y",point[1]-size*.55).attr("width",size*1.1).attr("height",size*1.1).attr("transform",`rotate(45 ${point[0]} ${point[1]})`).attr("fill",color(row,metric));
+        attachInteraction(diamond,row);
+      } else {
+        const port=markers.append("circle").attr("class","port-marker").attr("cx",point[0]).attr("cy",point[1]).attr("r",size).attr("fill",color(row,metric));
+        attachInteraction(port,row);
+      }
+    });
+  }
+
+  function pin(row) {
+    detail.innerHTML = `<h2>${esc(row.Name)}</h2><div class="sub">${esc(row.Type)} · ${esc(row.Region)} · ${esc(row["Observation date"])}</div>` +
+      [["Activity",fmt(row["Total activity"])],["7-day average",fmt(row["7-day average"])],["30-day average",fmt(row["30-day average"])],["Vs 7-day",pct(row["Change vs 7-day"])],["Vs 30-day",pct(row["Change vs 30-day"])],["Bulk O&G",fmt(row["Bulk O&G"])],["Bulk non-O&G",fmt(row["Bulk non-O&G"])],["Container",fmt(row.Container)],["Imports",fmt(row.Imports)],["Exports",fmt(row.Exports)]].map(v=>`<div class="metric"><span>${v[0]}</span><strong>${v[1]}</strong></div>`).join("") +
+      `<div class="status">${esc(row["Recent status"])} · ${esc(row.Availability)}</div><svg id="spark" viewBox="0 0 270 90"></svg>` +
+      `<div class="geo-note"><strong>Geography:</strong> ${esc(coords(row))}<br>${esc(row["Coordinate source"])} · verified ${esc(row["Coordinate verified on"])}<br>${esc(row["Coordinate note"])}</div>` +
+      `<div class="warning">PortWatch provides aggregate daily activity. Exact ships parked, at berth, or waiting require licensed vessel-level AIS.</div>`;
+    drawSpark(row["45-day history JSON"]);
+  }
+
+  function drawSpark(raw) {
+    const target=document.getElementById("spark"); let data=[];
+    try { data=JSON.parse(raw||"[]").filter(d=>n(d.total)!=null); } catch(e) { target.innerHTML=""; return; }
+    if(data.length<2) return;
+    const vals=data.map(d=>n(d.total)), min=Math.min(...vals), max=Math.max(...vals), span=Math.max(1,max-min);
+    const points=vals.map((v,i)=>`${8+i/(vals.length-1)*254},${80-(v-min)/span*68}`).join(" ");
+    target.innerHTML=`<polyline points="${points}" fill="none" stroke="#2878b5" stroke-width="2"/><line x1="8" y1="80" x2="262" y2="80" stroke="#d8e1ea"/>`;
+  }
+
+  function resetView() { svg.transition().duration(300).call(zoom.transform,d3.zoomIdentity); }
+  function loaded(data) {
+    rows=data; document.getElementById("loading").remove(); document.getElementById("map").hidden=false; document.getElementById("mapTools").hidden=false;
+    drawBase();
+    [...new Set(rows.map(r=>r.Region))].sort().forEach(region=>{ const option=document.createElement("option"); option.textContent=region; document.getElementById("region").appendChild(option); });
+    ["type","region","metric"].forEach(id=>document.getElementById(id).addEventListener("change",render));
+    document.getElementById("zoomIn").addEventListener("click",()=>svg.transition().call(zoom.scaleBy,1.5));
+    document.getElementById("zoomOut").addEventListener("click",()=>svg.transition().call(zoom.scaleBy,1/1.5));
+    document.getElementById("reset").addEventListener("click",resetView);
+    svg.on("click",()=>{detail.innerHTML='<div class="empty">Select a port or strait to pin its latest statistics and trend.</div>';});
+    render();
+  }
+  function failed(error) { document.querySelector("main").innerHTML=`<div class="error">${esc(error.message||error)}</div>`; }
+  if (globalThis.google && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(loaded).withFailureHandler(failed).getShippingMapData();
+  } else if (Array.isArray(globalThis.__MAP_DATA__)) {
+    loaded(globalThis.__MAP_DATA__);
+  } else {
+    failed(new Error("Map data is unavailable outside the bound Google Sheet."));
+  }
+</script>
+</body>
+</html>

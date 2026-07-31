@@ -264,6 +264,8 @@ def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     ]
     map_headers = [
         "Area ID", "Name", "Type", "Region", "Latitude", "Longitude",
+        "Geometry type", "Geometry JSON", "Coordinate source",
+        "Coordinate verified on", "Coordinate note",
         "Observation date", "Total activity", "7-day average", "30-day average",
         "Change vs 7-day", "Change vs 30-day", "Recent status", "Bulk O&G",
         "Bulk non-O&G", "Container", "Other cargo", "Unknown", "Imports",
@@ -272,7 +274,12 @@ def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     map_rows = [
         [
             row["area_id"], row["area_name"], row["area_type"], row["region"],
-            row["lat"], row["lon"], row["observation_date"], row["total"],
+            row["lat"], row["lon"],
+            row.get("geometry_type", "corridor" if row["area_type"] == "strait" else "point"),
+            row.get("geometry_json", json.dumps([[row["lon"], row["lat"]]])),
+            row.get("coordinate_source", "IMF PortWatch"),
+            row.get("coordinate_verified_on", ""), row.get("coordinate_note", ""),
+            row["observation_date"], row["total"],
             row["avg_7d"], row["avg_30d"], row["change_7d"],
             row["change_30d"], row["recent_status"], row["bulk_og"],
             row["bulk_non_og"], row["container"], row["other_cargo"],
@@ -298,12 +305,19 @@ def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
             [
                 "Area ID", "Name", "Source name", "Type", "Region", "Latitude",
                 "Longitude", "Priority comparison",
+                "Geometry type", "Geometry JSON", "Coordinate source",
+                "Coordinate verified on", "Coordinate note",
             ],
             *[
                 [
                     area["id"], area["name"], area["source_name"], area["type"],
                     area["region"], area["lat"], area["lon"],
                     area.get("priority", False),
+                    area.get("geometry_type", "corridor" if area["type"] == "strait" else "point"),
+                    json.dumps(area.get("geometry", [[area["lon"], area["lat"]]]), separators=(",", ":")),
+                    area.get("coordinate_source", "IMF PortWatch"),
+                    area.get("coordinate_verified_on", ""),
+                    area.get("coordinate_note", ""),
                 ]
                 for area in payload["areas"]
             ],
@@ -387,7 +401,7 @@ def _upload_screenshot(drive, screenshot_path: str | Path) -> str:
 def _ensure_tabs(sheets, spreadsheet_id: str) -> dict[str, Any]:
     metadata = sheets.spreadsheets().get(
         spreadsheetId=spreadsheet_id,
-        fields="sheets(properties(sheetId,title,hidden),charts(chartId))",
+        fields="sheets(properties(sheetId,title,hidden,gridProperties(columnCount)),charts(chartId))",
     ).execute()
     titles = {
         item["properties"]["title"] for item in metadata.get("sheets", [])
@@ -411,7 +425,29 @@ def _ensure_tabs(sheets, spreadsheet_id: str) -> dict[str, Any]:
         ).execute()
         metadata = sheets.spreadsheets().get(
             spreadsheetId=spreadsheet_id,
-            fields="sheets(properties(sheetId,title,hidden),charts(chartId))",
+            fields="sheets(properties(sheetId,title,hidden,gridProperties(columnCount)),charts(chartId))",
+        ).execute()
+    resize_requests = []
+    for item in metadata.get("sheets", []):
+        properties = item["properties"]
+        if properties["title"] == "Map_Data" and properties.get(
+            "gridProperties", {}
+        ).get("columnCount", 0) < 29:
+            resize_requests.append(
+                {
+                    "updateSheetProperties": {
+                        "properties": {
+                            "sheetId": properties["sheetId"],
+                            "gridProperties": {"columnCount": 29},
+                        },
+                        "fields": "gridProperties.columnCount",
+                    }
+                }
+            )
+    if resize_requests:
+        sheets.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={"requests": resize_requests},
         ).execute()
     return metadata
 

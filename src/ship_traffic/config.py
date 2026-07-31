@@ -44,6 +44,22 @@ def load_config(path: str | Path) -> AppConfig:
         raise ValueError(
             "Invalid coordinates for: " + ", ".join(invalid_coordinates)
         )
+    invalid_geometry = []
+    for area in areas:
+        expected_type = "corridor" if area.type == "strait" else "point"
+        minimum_points = 2 if expected_type == "corridor" else 1
+        if area.geometry_type != expected_type or len(area.geometry) < minimum_points:
+            invalid_geometry.append(area.id)
+            continue
+        if any(
+            not (-180 <= lon <= 180 and -90 <= lat <= 90)
+            for lon, lat in area.geometry
+        ):
+            invalid_geometry.append(area.id)
+    if invalid_geometry:
+        raise ValueError(
+            "Invalid map geometry for: " + ", ".join(invalid_geometry)
+        )
     if len([area for area in areas if area.priority]) > 16:
         raise ValueError("At most 16 areas may be marked as dashboard priorities")
     return AppConfig(

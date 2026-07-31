@@ -90,6 +90,22 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(len(config.ports), 32)
         self.assertEqual(len({area.id for area in config.areas}), 44)
         self.assertEqual(sum(area.priority for area in config.areas), 16)
+        self.assertTrue(all(area.coordinate_verified_on == "2026-07-31" for area in config.areas))
+        self.assertTrue(all(len(area.geometry) >= 2 for area in config.straits))
+        self.assertTrue(all(len(area.geometry) == 1 for area in config.ports))
+
+    def test_map_geometry_uses_lon_lat_order_and_valid_ranges(self):
+        config = load_config(ROOT / "config" / "areas.json")
+        for area in config.areas:
+            for lon, lat in area.geometry:
+                self.assertGreaterEqual(lon, -180)
+                self.assertLessEqual(lon, 180)
+                self.assertGreaterEqual(lat, -90)
+                self.assertLessEqual(lat, 90)
+        malacca = next(area for area in config.straits if area.id == "malacca")
+        self.assertAlmostEqual(malacca.lon, 102.6651061)
+        self.assertAlmostEqual(malacca.lat, 1.516954817)
+        self.assertEqual(malacca.geometry_type, "corridor")
 
     def test_fixture_categories_reconcile(self):
         config = load_config(ROOT / "config" / "areas.json")

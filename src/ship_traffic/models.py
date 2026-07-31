@@ -25,18 +25,38 @@ class Area:
     lat: float
     lon: float
     priority: bool = False
+    geometry_type: str = "point"
+    geometry: tuple[tuple[float, float], ...] = ()
+    coordinate_source: str = "IMF PortWatch"
+    coordinate_verified_on: str = ""
+    coordinate_note: str = ""
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Area":
+        lon = float(value["lon"])
+        lat = float(value["lat"])
+        geometry_type = str(
+            value.get("geometry_type", "corridor" if value["type"] == "strait" else "point")
+        )
+        raw_geometry = value.get("geometry", [[lon, lat]])
+        geometry = tuple(
+            (float(coordinate[0]), float(coordinate[1]))
+            for coordinate in raw_geometry
+        )
         return cls(
             id=str(value["id"]),
             name=str(value["name"]),
             source_name=str(value.get("source_name", value["name"])),
             type=str(value["type"]),
             region=str(value["region"]),
-            lat=float(value["lat"]),
-            lon=float(value["lon"]),
+            lat=lat,
+            lon=lon,
             priority=bool(value.get("priority", False)),
+            geometry_type=geometry_type,
+            geometry=geometry,
+            coordinate_source=str(value.get("coordinate_source", "IMF PortWatch")),
+            coordinate_verified_on=str(value.get("coordinate_verified_on", "")),
+            coordinate_note=str(value.get("coordinate_note", "")),
         )
 
 
