@@ -2,14 +2,19 @@ import json
 import tempfile
 import unittest
 from argparse import Namespace
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
 from ship_traffic.aggregate import enrich_rows, quality_rows
 from ship_traffic.cli import classify_report_date, run
 from ship_traffic.config import load_config
-from ship_traffic.google_delivery import _sheet_values, parse_dashboard_date
+from ship_traffic.google_delivery import (
+    REPORT_DATA_SHEETS,
+    _sheet_values,
+    merge_run_log_rows,
+    parse_dashboard_date,
+)
 from ship_traffic.models import Area
 from ship_traffic.providers import FixtureProvider, PortWatchProvider
 from ship_traffic.storage import Repository
@@ -71,11 +76,16 @@ class CoreTests(unittest.TestCase):
                 ),
                 patch("ship_traffic.cli.write_outputs") as write_outputs,
                 patch("ship_traffic.cli.deliver") as deliver,
+                patch("ship_traffic.cli.sync_run_log") as sync_run_log,
             ):
                 self.assertEqual(run(args), 0)
 
             write_outputs.assert_not_called()
             deliver.assert_not_called()
+            sync_run_log.assert_called_once()
+            self.assertEqual(
+                sync_run_log.call_args.args[0]["status"], "no_new_data"
+            )
             result = json.loads(
                 (output_dir / "run_result.json").read_text(encoding="utf-8")
             )
@@ -83,6 +93,150 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(result["report_date"], "2026-07-17")
             self.assertEqual(result["previous_report_date"], "2026-07-17")
             self.assertFalse(result["delivered"])
+
+    def test_run_log_keeps_90_malaysia_days_and_multiple_attempts(self):
+        existing = [
+            [
+                "expired",
+                "2026-05-04T15:59:59+00:00",
+                "",
+                "no_new_data",
+                "portwatch",
+                "2026-05-04",
+                1,
+                0,
+                "expired local day",
+            ],
+            [
+                "boundary",
+                "2026-05-04T16:00:00+00:00",
+                "",
+                "no_new_data",
+                "portwatch",
+                "2026-05-05",
+                1,
+                0,
+                "retained boundary day",
+            ],
+            [
+                "same-day-manual",
+                "2026-08-02T01:00:00+00:00",
+                "",
+                "no_new_data",
+                "portwatch",
+                "2026-08-02",
+                1,
+                0,
+                "manual retry",
+            ],
+        ]
+        current = {
+            "run_id": "current",
+            "started_at": "2026-08-02T02:00:00+00:00",
+            "completed_at": "2026-08-02T02:01:00+00:00",
+            "status": "no_new_data",
+            "provider": "portwatch",
+            "target_date": "2026-08-02",
+            "row_count": 44,
+            "warning_count": 0,
+            "message": "daily check",
+        }
+        matrix = merge_run_log_rows(
+            existing,
+            current,
+            now=datetime(2026, 8, 2, 3, tzinfo=timezone.utc),
+        )
+        self.assertEqual(
+            [row[0] for row in matrix[1:]],
+            ["current", "same-day-manual", "boundary"],
+        )
+
+    def test_run_log_merge_replaces_matching_run_id(self):
+        existing = [
+            [
+                "same",
+                "2026-08-02T01:00:00+00:00",
+                "",
+                "failed",
+                "portwatch",
+                "2026-08-02",
+                0,
+                1,
+                "old",
+            ]
+        ]
+        current = {
+            "run_id": "same",
+            "started_at": "2026-08-02T01:00:00+00:00",
+            "completed_at": "2026-08-02T01:02:00+00:00",
+            "status": "no_new_data",
+            "provider": "portwatch",
+            "target_date": "2026-08-02",
+            "row_count": 44,
+            "warning_count": 0,
+            "message": "updated",
+        }
+        matrix = merge_run_log_rows(
+            existing,
+            current,
+            now=datetime(2026, 8, 2, 3, tzinfo=timezone.utc),
+        )
+        self.assertEqual(len(matrix), 2)
+        self.assertEqual(matrix[1][3], "no_new_data")
+        self.assertEqual(matrix[1][8], "updated")
+
+    def test_full_report_delivery_does_not_replace_run_log(self):
+        self.assertNotIn("Run_Log", REPORT_DATA_SHEETS)
+
+    def test_failed_google_run_attempts_remote_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = Namespace(
+                provider="fixture",
+                date="2026-08-02",
+                history_days=1,
+                config=str(ROOT / "config" / "areas.json"),
+                database=str(root / "test.sqlite3"),
+                output_dir=str(root / "artifacts"),
+                google=True,
+            )
+            with (
+                patch(
+                    "ship_traffic.cli.FixtureProvider.fetch",
+                    side_effect=RuntimeError("source unavailable"),
+                ),
+                patch("ship_traffic.cli.sync_run_log") as sync_run_log,
+            ):
+                self.assertEqual(run(args), 1)
+
+            sync_run_log.assert_called_once()
+            record = sync_run_log.call_args.args[0]
+            self.assertEqual(record["status"], "failed")
+            self.assertIn("source unavailable", record["message"])
+
+    def test_remote_log_failure_does_not_hide_pipeline_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = Namespace(
+                provider="fixture",
+                date="2026-08-02",
+                history_days=1,
+                config=str(ROOT / "config" / "areas.json"),
+                database=str(root / "test.sqlite3"),
+                output_dir=str(root / "artifacts"),
+                google=True,
+            )
+            with (
+                patch(
+                    "ship_traffic.cli.FixtureProvider.fetch",
+                    side_effect=RuntimeError("source unavailable"),
+                ),
+                patch(
+                    "ship_traffic.cli.sync_run_log",
+                    side_effect=RuntimeError("sheet unavailable"),
+                ),
+            ):
+                self.assertEqual(run(args), 1)
 
     def test_config_has_expected_coverage(self):
         config = load_config(ROOT / "config" / "areas.json")

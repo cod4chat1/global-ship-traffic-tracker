@@ -118,9 +118,10 @@ The Codex desktop automation supplied with this project also runs daily at 08:00
 1. downloads the latest IMF PortWatch observations;
 2. selects the latest date with complete configured-area coverage;
 3. compares that date with the last successfully delivered date in the dashboard;
-4. updates the native Google Sheet and Drive screenshot only when the observation date advances;
-5. retains diagnostic artifacts for 14 days; and
-6. posts a GitHub issue notification only when a new observation date is published.
+4. updates the traffic tabs and Drive screenshot only when the observation date advances;
+5. records every attempt in `Run_Log` and retains the latest 90 Malaysia calendar days;
+6. retains diagnostic artifacts for 14 days; and
+7. posts a GitHub issue notification only when a new observation date is published.
 
 Create a public GitHub repository and add these encrypted repository secrets:
 
@@ -131,8 +132,9 @@ Create a public GitHub repository and add these encrypted repository secrets:
 Share both the native Google Sheet and its Drive folder with the service-account email as Editor. Keep the `Daily ship traffic update alerts` issue open and subscribed. GitHub then delivers the completion mention according to your GitHub web, mobile, and email notification settings.
 
 When PortWatch has not published a later observation date, the workflow succeeds
-silently and does not rewrite the Sheet, replace the screenshot, or add an issue
-comment. Same-date provider revisions are intentionally ignored.
+silently. It adds a `no_new_data` entry to `Run_Log`, but it does not rewrite the
+traffic report, replace the screenshot, or add an issue comment. Same-date
+provider revisions are intentionally ignored.
 
 The scheduled GitHub run sets `SHIP_TRAFFIC_SKIP_WORKBOOK=1`. It updates the native Google Sheet directly, while the local build continues to produce a standalone Excel workbook for download and archiving.
 

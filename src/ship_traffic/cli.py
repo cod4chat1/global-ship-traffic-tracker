@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .aggregate import enrich_rows, quality_rows
 from .config import load_config
-from .google_delivery import current_dashboard_date, deliver
+from .google_delivery import current_dashboard_date, deliver, sync_run_log
 from .providers import FixtureProvider, PortWatchProvider
 from .reporting import build_report_payload, write_outputs
 from .storage import Repository
@@ -63,6 +63,9 @@ def run(args: argparse.Namespace) -> int:
     started = datetime.now(timezone.utc)
     repository = Repository(database_path)
     repository.start_run(run_id, started.isoformat(), args.provider, target_date.isoformat())
+    row_count = 0
+    warning_count = 0
+    report_date: date | None = None
     try:
         observations = provider.fetch(config.areas, start_date, target_date)
         if not observations:
@@ -117,6 +120,22 @@ def run(args: argparse.Namespace) -> int:
                     0,
                     "No new PortWatch observation date; delivery skipped",
                 )
+                sync_run_log(
+                    {
+                        "run_id": run_id,
+                        "started_at": started.isoformat(),
+                        "completed_at": completed.isoformat(),
+                        "status": "no_new_data",
+                        "provider": args.provider,
+                        "target_date": target_date.isoformat(),
+                        "row_count": row_count,
+                        "warning_count": 0,
+                        "message": (
+                            f"Observation date {report_date.isoformat()}; "
+                            "delivery skipped"
+                        ),
+                    }
+                )
                 run_result = {
                     "status": update_status,
                     "report_date": report_date.isoformat(),
@@ -155,6 +174,7 @@ def run(args: argparse.Namespace) -> int:
             enriched, report_date, {area.id for area in config.areas}
         )
         warnings = sum(item["status"] in {"WARN", "FAIL"} for item in quality)
+        warning_count = warnings
         completed = datetime.now(timezone.utc)
         repository.finish_run(
             run_id,
@@ -178,6 +198,22 @@ def run(args: argparse.Namespace) -> int:
         if args.google:
             result["google"] = deliver(payload, artifacts["screenshot"])
             delivered = True
+            sync_run_log(
+                {
+                    "run_id": run_id,
+                    "started_at": started.isoformat(),
+                    "completed_at": completed.isoformat(),
+                    "status": update_status,
+                    "provider": args.provider,
+                    "target_date": target_date.isoformat(),
+                    "row_count": row_count,
+                    "warning_count": warning_count,
+                    "message": (
+                        f"Observation date {report_date.isoformat()}; "
+                        "report delivered"
+                    ),
+                }
+            )
         run_result = {
             "status": update_status,
             "report_date": report_date.isoformat(),
@@ -195,8 +231,35 @@ def run(args: argparse.Namespace) -> int:
     except Exception as error:  # noqa: BLE001 - CLI records and reports final failure
         completed = datetime.now(timezone.utc)
         repository.finish_run(
-            run_id, completed.isoformat(), "failed", 0, 1, str(error)
+            run_id, completed.isoformat(), "failed", row_count, 1, str(error)
         )
+        if args.google:
+            try:
+                selected_date = (
+                    report_date.isoformat()
+                    if report_date is not None
+                    else "unavailable"
+                )
+                sync_run_log(
+                    {
+                        "run_id": run_id,
+                        "started_at": started.isoformat(),
+                        "completed_at": completed.isoformat(),
+                        "status": "failed",
+                        "provider": args.provider,
+                        "target_date": target_date.isoformat(),
+                        "row_count": row_count,
+                        "warning_count": max(1, warning_count),
+                        "message": (
+                            f"Observation date {selected_date}; {error}"
+                        ),
+                    }
+                )
+            except Exception as log_error:  # noqa: BLE001 - preserve root failure
+                print(
+                    f"WARNING: could not update Run_Log: {log_error}",
+                    file=sys.stderr,
+                )
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
     finally:

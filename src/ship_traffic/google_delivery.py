@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 
 DATA_SHEETS = (
@@ -17,6 +18,21 @@ DATA_SHEETS = (
     "Dashboard_Data",
     "Map_Data",
 )
+REPORT_DATA_SHEETS = tuple(
+    name for name in DATA_SHEETS if name != "Run_Log"
+)
+RUN_LOG_HEADERS = [
+    "Run ID",
+    "Started at",
+    "Completed at",
+    "Status",
+    "Provider",
+    "Target date",
+    "Rows",
+    "Warnings",
+    "Message",
+]
+MALAYSIA_TIMEZONE = ZoneInfo("Asia/Kuala_Lumpur")
 
 
 def _credentials():
@@ -84,6 +100,125 @@ def current_dashboard_date() -> date | None:
     values = response.get("values", [])
     value = values[0][0] if values and values[0] else None
     return parse_dashboard_date(value)
+
+
+def _parse_run_timestamp(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str) and value.strip():
+        try:
+            parsed = datetime.fromisoformat(
+                value.strip().replace("Z", "+00:00")
+            )
+        except ValueError:
+            return None
+    else:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def merge_run_log_rows(
+    existing_rows: list[list[Any]],
+    current_run: dict[str, Any],
+    *,
+    now: datetime | None = None,
+    retention_days: int = 90,
+) -> list[list[Any]]:
+    if retention_days < 1:
+        raise ValueError("retention_days must be at least 1")
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None:
+        current_time = current_time.replace(tzinfo=timezone.utc)
+    cutoff = (
+        current_time.astimezone(MALAYSIA_TIMEZONE).date()
+        - timedelta(days=retention_days - 1)
+    )
+
+    records: dict[str, tuple[datetime, list[Any]]] = {}
+    for source in existing_rows:
+        row = list(source[: len(RUN_LOG_HEADERS)])
+        row.extend([""] * (len(RUN_LOG_HEADERS) - len(row)))
+        run_id = str(row[0]).strip()
+        started_at = _parse_run_timestamp(row[1])
+        if not run_id or started_at is None:
+            continue
+        records[run_id] = (started_at, row)
+
+    current_row = [
+        current_run.get("run_id", ""),
+        current_run.get("started_at", ""),
+        current_run.get("completed_at", ""),
+        current_run.get("status", ""),
+        current_run.get("provider", ""),
+        current_run.get("target_date", ""),
+        current_run.get("row_count", 0),
+        current_run.get("warning_count", 0),
+        current_run.get("message", ""),
+    ]
+    current_id = str(current_row[0]).strip()
+    current_started_at = _parse_run_timestamp(current_row[1])
+    if not current_id or current_started_at is None:
+        raise ValueError("current run requires a Run ID and valid Started at")
+    records[current_id] = (current_started_at, current_row)
+
+    retained = [
+        item
+        for item in records.values()
+        if item[0].astimezone(MALAYSIA_TIMEZONE).date() >= cutoff
+    ]
+    retained.sort(key=lambda item: item[0], reverse=True)
+    return [RUN_LOG_HEADERS, *[row for _, row in retained]]
+
+
+def sync_run_log(
+    current_run: dict[str, Any],
+    *,
+    now: datetime | None = None,
+) -> str:
+    try:
+        from googleapiclient.discovery import build
+    except ImportError as error:
+        raise RuntimeError(
+            "Install the Google API dependencies before Google delivery"
+        ) from error
+
+    spreadsheet_id = os.getenv("GOOGLE_SPREADSHEET_ID")
+    if not spreadsheet_id:
+        raise RuntimeError("GOOGLE_SPREADSHEET_ID is not configured")
+
+    sheets = build(
+        "sheets", "v4", credentials=_credentials(), cache_discovery=False
+    )
+    _ensure_tabs(sheets, spreadsheet_id)
+    response = (
+        sheets.spreadsheets()
+        .values()
+        .get(
+            spreadsheetId=spreadsheet_id,
+            range="'Run_Log'!A2:I1000",
+            valueRenderOption="FORMATTED_VALUE",
+        )
+        .execute()
+    )
+    matrix = merge_run_log_rows(
+        response.get("values", []), current_run, now=now
+    )
+    sheets.spreadsheets().values().update(
+        spreadsheetId=spreadsheet_id,
+        range="'Run_Log'!A1",
+        valueInputOption="USER_ENTERED",
+        body={"majorDimension": "ROWS", "values": matrix},
+    ).execute()
+    first_unused_row = len(matrix) + 1
+    if first_unused_row <= 1000:
+        sheets.spreadsheets().values().clear(
+            spreadsheetId=spreadsheet_id,
+            range=f"'Run_Log'!A{first_unused_row}:I1000",
+            body={},
+        ).execute()
+    return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
 
 
 def _selector_formula(value_column: str, row_number: int) -> str:
@@ -320,20 +455,6 @@ def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
                     area.get("coordinate_note", ""),
                 ]
                 for area in payload["areas"]
-            ],
-        ],
-        "Run_Log": [
-            [
-                "Run ID", "Started at", "Completed at", "Status", "Provider",
-                "Target date", "Rows", "Warnings", "Message",
-            ],
-            *[
-                [
-                    run["run_id"], run["started_at"], run["completed_at"],
-                    run["status"], run["provider"], run["target_date"],
-                    run["row_count"], run["warning_count"], run["message"],
-                ]
-                for run in payload["runs"]
             ],
         ],
         "Dashboard_Data": dashboard_data,
@@ -1356,7 +1477,7 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
     latest_helper_row = date_count + 1
     sheets.spreadsheets().values().batchClear(
         spreadsheetId=spreadsheet_id,
-        body={"ranges": [f"'{name}'!A2:Z" for name in DATA_SHEETS]},
+        body={"ranges": [f"'{name}'!A2:Z" for name in REPORT_DATA_SHEETS]},
     ).execute()
     updates = [
         {
