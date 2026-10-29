@@ -176,6 +176,11 @@ def build_report_payload(
             "generated_at": generated_at.isoformat(),
             "timezone": config.timezone,
             "snapshot_time": config.snapshot_time,
+            "observed_locations": sum(
+                current_by_id.get(area.id, {}).get("total") is not None
+                for area in config.areas
+            ),
+            "configured_locations": len(config.areas),
             "source_note": (
                 "PortWatch measures daily aggregate activity. Exact parked-vessel "
                 "counts require a licensed vessel-level AIS source."
@@ -316,7 +321,7 @@ footer {{ display:flex; justify-content:space-between; gap:24px; margin-top:18px
     </aside>
   </div>
   <footer>
-    <div class="warning">{html.escape(metadata['source_note'])}</div>
+    <div class="warning">Coverage: {metadata['observed_locations']}/{metadata['configured_locations']} locations on {metadata['target_date']}; totals include observed locations only. {html.escape(metadata['source_note'])}</div>
     <div>Generated {html.escape(metadata['generated_at'])}</div>
   </footer>
 </div>
@@ -395,3 +400,4 @@ def write_outputs(
         artifacts["workbook"] = str(workbook)
     capture_screenshot(map_html, screenshot, script_root)
     return artifacts
+

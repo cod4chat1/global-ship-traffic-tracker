@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from argparse import Namespace
+from dataclasses import replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -12,6 +13,8 @@ from ship_traffic.config import load_config
 from ship_traffic.google_delivery import (
     REPORT_DATA_SHEETS,
     _sheet_values,
+    _dashboard_category_formula,
+    _merge_history_matrix,
     merge_run_log_rows,
     parse_dashboard_date,
 )
@@ -188,6 +191,22 @@ class CoreTests(unittest.TestCase):
     def test_full_report_delivery_does_not_replace_run_log(self):
         self.assertNotIn("Run_Log", REPORT_DATA_SHEETS)
 
+    def test_history_merge_preserves_missing_and_updates_existing(self):
+        header = ["Date", "Area ID", "Name", "Region", "Total"]
+        old = [header, ["2026-07-16", "missing", "Missing", "Asia", 22],
+               ["2026-07-17", "current", "Current", "Asia", 5]]
+        new = [header, ["2026-07-17", "current", "Current", "Asia", 8],
+               ["2026-07-16", "missing", "Missing", "Asia", None]]
+        merged = _merge_history_matrix(old, new)
+        self.assertEqual(merged[1][4], 22)
+        self.assertEqual(merged[2][4], 8)
+        self.assertEqual(_merge_history_matrix([["Date", "Area ID", "Name", "Region", "Total - calls"]],
+                         [["Date", "Area ID", "Name", "Region", "Total - calls"]])[0][-1], "Total - calls")
+        with self.assertRaisesRegex(RuntimeError, "headers changed"):
+            _merge_history_matrix([["unexpected"]], new)
+        with self.assertRaisesRegex(RuntimeError, "unrecognized date"):
+            _merge_history_matrix([header, ["unknown", "x"]], new)
+
     def test_failed_google_run_attempts_remote_log(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -213,6 +232,33 @@ class CoreTests(unittest.TestCase):
             record = sync_run_log.call_args.args[0]
             self.assertEqual(record["status"], "failed")
             self.assertIn("source unavailable", record["message"])
+
+    def test_partial_portwatch_run_delivers_explicit_coverage(self):
+        config = load_config(ROOT / "config" / "areas.json")
+        report_date = date(2026, 7, 17)
+        observations = [replace(row, source="IMF PortWatch") for row in
+                        FixtureProvider().fetch(config.areas[:1], report_date, report_date)]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = Namespace(provider="portwatch", date=report_date.isoformat(), history_days=1,
+                             config=str(ROOT / "config" / "areas.json"),
+                             database=str(root / "test.sqlite3"),
+                             output_dir=str(root / "artifacts"), google=True)
+            with (patch("ship_traffic.cli.PortWatchProvider.fetch", return_value=observations),
+                  patch("ship_traffic.cli.current_dashboard_date", return_value=date(2026, 7, 16)),
+                  patch("ship_traffic.cli.write_outputs", return_value={"screenshot": "test.png"}),
+                  patch("ship_traffic.cli.deliver", return_value={}) as deliver,
+                  patch("ship_traffic.cli.sync_run_log")):
+                self.assertEqual(run(args), 0)
+            payload = deliver.call_args.args[0]
+            self.assertEqual(payload["metadata"]["target_date"], "2026-07-17")
+            self.assertEqual(payload["metadata"]["observed_locations"], 1)
+            self.assertEqual(payload["metadata"]["configured_locations"], 44)
+            missing = payload["current_conditions"][1]
+            self.assertIsNone(missing["total"])
+            self.assertIsNone(missing["observation_date"])
+            self.assertEqual(missing["availability"], "unavailable")
+            self.assertIn('IF($A$10="","",', _dashboard_category_formula("H"))
 
     def test_remote_log_failure_does_not_hide_pipeline_failure(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -376,6 +422,34 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(observation.other_cargo, 15)
         self.assertEqual(observation.unknown, 10)
 
+    def test_portwatch_error_identifies_layer_without_query(self):
+        provider = PortWatchProvider(retries=1)
+        endpoint = "https://example.test/FeatureServer/0/query"
+        with patch("urllib.request.urlopen", side_effect=RuntimeError("unavailable")):
+            with self.assertRaises(RuntimeError) as raised:
+                provider._get_json(endpoint, {"where": "private-value", "resultOffset": 5})
+        self.assertIn(endpoint, str(raised.exception))
+        self.assertIn("offset 5", str(raised.exception))
+        self.assertNotIn("private-value", str(raised.exception))
+
+    def test_portwatch_retries_transient_error_then_returns_data(self):
+        provider = PortWatchProvider(retries=2)
+        response = unittest.mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"features": []}'
+        with (patch("urllib.request.urlopen", side_effect=[RuntimeError("temporary"), response]) as call,
+              patch("time.sleep") as sleep):
+            self.assertEqual(provider._get_json("https://example.test/query", {}), {"features": []})
+        self.assertEqual(call.call_count, 2)
+        sleep.assert_called_once()
+
+    def test_portwatch_deadline_prevents_request(self):
+        provider = PortWatchProvider(retries=2)
+        provider._deadline = 0
+        with patch("urllib.request.urlopen") as call:
+            with self.assertRaisesRegex(RuntimeError, "deadline exceeded"):
+                provider._get_json("https://example.test/query", {})
+        call.assert_not_called()
+
     def test_portwatch_rejects_ambiguous_shortest_contains_match(self):
         provider = PortWatchProvider()
         area = Area(
@@ -468,3 +542,4 @@ class CoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

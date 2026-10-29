@@ -98,7 +98,7 @@ def run(args: argparse.Namespace) -> int:
                     if len(area_ids) == best_coverage
                 )
             else:
-                report_date = target_date
+                raise RuntimeError("No usable PortWatch observations were returned")
         row_count = repository.upsert(observations)
         report_start_date = report_date - timedelta(
             days=max(1, args.history_days) - 1
@@ -209,7 +209,9 @@ def run(args: argparse.Namespace) -> int:
                     "row_count": row_count,
                     "warning_count": warning_count,
                     "message": (
-                        f"Observation date {report_date.isoformat()}; "
+                        f"Observation date {report_date.isoformat()}; coverage "
+                        f"{payload['metadata']['observed_locations']}/"
+                        f"{payload['metadata']['configured_locations']}; "
                         "report delivered"
                     ),
                 }
@@ -223,6 +225,8 @@ def run(args: argparse.Namespace) -> int:
                 else None
             ),
             "delivered": delivered,
+            "observed_locations": payload["metadata"]["observed_locations"],
+            "configured_locations": payload["metadata"]["configured_locations"],
         }
         artifacts["run_result"] = _write_run_result(output_dir, run_result)
         result.update(run_result)
@@ -273,3 +277,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -268,7 +268,7 @@ def _comparison_formula(
 def _dashboard_category_formula(value_column: str) -> str:
     data_range = f"'Dashboard_Data'!${value_column}$2:${value_column}$2000"
     return (
-        '=IF($B$6<>"All matching locations",'
+        '=IF($A$10="","",IF($B$6<>"All matching locations",'
         f"SUMIFS({data_range},'Dashboard_Data'!$A$2:$A$2000,$B$7,"
         f"'Dashboard_Data'!$D$2:$D$2000,$B$6),"
         'IF($B$5="All",'
@@ -276,20 +276,20 @@ def _dashboard_category_formula(value_column: str) -> str:
         f"'Dashboard_Data'!$B$2:$B$2000,$B$4),"
         f"SUMIFS({data_range},'Dashboard_Data'!$A$2:$A$2000,$B$7,"
         f"'Dashboard_Data'!$B$2:$B$2000,$B$4,"
-        f"'Dashboard_Data'!$C$2:$C$2000,$B$5)))"
+        f"'Dashboard_Data'!$C$2:$C$2000,$B$5))))"
     )
 
 
 def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     strait_headers = [
-        "Date", "Area ID", "Strait", "Region", "Total crossings", "Bulk – O&G",
-        "Bulk – non-O&G", "Container", "Other cargo", "Others", "Unknown",
+        "Date", "Area ID", "Strait", "Region", "Total crossings", "Bulk - O&G",
+        "Bulk - non-O&G", "Container", "Other cargo", "Others", "Unknown",
         "7d avg", "30d avg", "Change vs 7d", "Change vs 30d", "Availability",
         "Recent status", "Source", "Source URL",
     ]
     port_headers = [
-        "Date", "Area ID", "Port", "Region", "Total activity", "Bulk – O&G",
-        "Bulk – non-O&G", "Container", "Other cargo", "Others", "Unknown",
+        "Date", "Area ID", "Port", "Region", "Total activity", "Bulk - O&G",
+        "Bulk - non-O&G", "Container", "Other cargo", "Others", "Unknown",
         "Imports (t)", "Exports (t)", "7d avg", "30d avg", "Change vs 7d",
         "Change vs 30d", "Availability", "Recent status", "Source", "Source URL",
     ]
@@ -322,7 +322,7 @@ def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     )
     dashboard_headers = [
         "Date", "Area type", "Region", "Area", "Actual", "7-day average",
-        "30-day average", "Bulk – O&G", "Bulk – non-O&G", "Container",
+        "30-day average", "Bulk - O&G", "Bulk - non-O&G", "Container",
         "Other cargo", "Unknown", "Recent status",
     ]
     dashboard_rows = [
@@ -462,6 +462,28 @@ def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     }
 
 
+def _merge_history_matrix(existing: list[list[Any]], incoming: list[list[Any]]) -> list[list[Any]]:
+    """Preserve historical rows when the current source omits a location."""
+    if not existing:
+        return incoming
+    def canonical_header(value: Any) -> str:
+        return str(value).replace("-", "-").replace("-", "-")
+    if ([canonical_header(v) for v in existing[0][:len(incoming[0])]]
+            != [canonical_header(v) for v in incoming[0]]):
+        raise RuntimeError("Historical sheet headers changed; delivery stopped to preserve data")
+    merged: dict[tuple[str, str], list[Any]] = {}
+    for row in existing[1:] + incoming[1:]:
+        if not row or all(value in (None, "") for value in row):
+            continue
+        if len(row) < 2 or parse_dashboard_date(row[0]) is None or not row[1]:
+            raise RuntimeError("Historical sheet contains an unrecognized date or area ID; delivery stopped")
+        key = (str(row[0]), str(row[1]))
+        # Do not overwrite an existing measurement with a missing value.
+        if key not in merged or (len(row) > 4 and row[4] not in (None, "")):
+            merged[key] = row
+    return [incoming[0], *[merged[key] for key in sorted(merged)]]
+
+
 def _upload_screenshot(drive, screenshot_path: str | Path) -> str:
     from googleapiclient.http import MediaFileUpload
 
@@ -522,7 +544,7 @@ def _upload_screenshot(drive, screenshot_path: str | Path) -> str:
 def _ensure_tabs(sheets, spreadsheet_id: str) -> dict[str, Any]:
     metadata = sheets.spreadsheets().get(
         spreadsheetId=spreadsheet_id,
-        fields="sheets(properties(sheetId,title,hidden,gridProperties(columnCount)),charts(chartId))",
+        fields="sheets(properties(sheetId,title,hidden,gridProperties(rowCount,columnCount)),charts(chartId))",
     ).execute()
     titles = {
         item["properties"]["title"] for item in metadata.get("sheets", [])
@@ -546,7 +568,7 @@ def _ensure_tabs(sheets, spreadsheet_id: str) -> dict[str, Any]:
         ).execute()
         metadata = sheets.spreadsheets().get(
             spreadsheetId=spreadsheet_id,
-            fields="sheets(properties(sheetId,title,hidden,gridProperties(columnCount)),charts(chartId))",
+            fields="sheets(properties(sheetId,title,hidden,gridProperties(rowCount,columnCount)),charts(chartId))",
         ).execute()
     resize_requests = []
     for item in metadata.get("sheets", []):
@@ -645,7 +667,7 @@ def _configure_dashboard(
         ["Focus location", old_focus],
         ["Observation date", payload["metadata"]["target_date"]],
         ["Period (days)", old_period],
-        ["Actual activity", "", "7-day average", "", "30-day average"],
+        ["Actual activity (observed only)", "", "7-day average", "", "30-day average"],
         [
             f"='Dashboard_Data'!Q{latest_helper_row}", "",
             f"='Dashboard_Data'!R{latest_helper_row}", "",
@@ -659,15 +681,17 @@ def _configure_dashboard(
             '=IF(C13="","Insufficient data",IF(C13>10%,"Above recent average",IF(C13<-10%,"Below recent average","Near recent average")))',
         ],
         [],
-        ["Source note: PortWatch provides aggregate vessel activity. Exact berth and anchorage counts require a licensed AIS feed."],
+        [f"Coverage on {payload['metadata']['target_date']}: "
+         f"{payload['metadata']['observed_locations']}/{payload['metadata']['configured_locations']} locations. "
+         "Totals include observed locations only. PortWatch provides aggregate vessel activity; exact berth and anchorage counts require licensed AIS."],
         [],
         ["Vessel type breakdown"],
         ["Vessel type", "Actual", "Share of total"],
-        ["Bulk – oil & gas", _dashboard_category_formula("H"), '=IFERROR(B19/$A$10,"")'],
-        ["Bulk – non-oil & gas", _dashboard_category_formula("I"), '=IFERROR(B20/$A$10,"")'],
+        ["Bulk - oil & gas", _dashboard_category_formula("H"), '=IFERROR(B19/$A$10,"")'],
+        ["Bulk - non-oil & gas", _dashboard_category_formula("I"), '=IFERROR(B20/$A$10,"")'],
         ["Container", _dashboard_category_formula("J"), '=IFERROR(B21/$A$10,"")'],
         ["Other cargo", _dashboard_category_formula("K"), '=IFERROR(B22/$A$10,"")'],
-        ["Other / unknown", "=MAX(0,$A$10-SUM($B$19:$B$22))", '=IFERROR(B23/$A$10,"")'],
+        ["Other / unknown", '=IF($A$10="","",MAX(0,$A$10-SUM($B$19:$B$22)))', '=IFERROR(B23/$A$10,"")'],
         [],
         ["Regional coverage"],
         ["Region", "Type", "Observed", "Configured", "Coverage", "Total activity"],
@@ -1468,6 +1492,27 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
     metadata = _ensure_tabs(sheets, spreadsheet_id)
 
     values = _sheet_values(payload)
+    historical_names = ("Daily_Strait_Traffic", "Daily_Port_Activity")
+    previous = sheets.spreadsheets().values().batchGet(
+        spreadsheetId=spreadsheet_id,
+        ranges=[f"'{name}'!A:Z" for name in historical_names],
+        valueRenderOption="FORMATTED_VALUE",
+    ).execute().get("valueRanges", [])
+    if len(previous) != len(historical_names):
+        raise RuntimeError("Could not read historical sheets; delivery stopped")
+    for name, old in zip(historical_names, previous):
+        values[name] = _merge_history_matrix(old.get("values", []), values[name])
+    resize_requests = []
+    for item in metadata.get("sheets", []):
+        properties = item["properties"]
+        name = properties["title"]
+        if name in values and len(values[name]) > properties.get("gridProperties", {}).get("rowCount", 0):
+            resize_requests.append({"updateSheetProperties": {
+                "properties": {"sheetId": properties["sheetId"], "gridProperties": {"rowCount": len(values[name])}},
+                "fields": "gridProperties.rowCount",
+            }})
+    if resize_requests:
+        sheets.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": resize_requests}).execute()
     date_count = len(
         {
             row["observation_date"]
@@ -1475,15 +1520,12 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
         }
     )
     latest_helper_row = date_count + 1
-    sheets.spreadsheets().values().batchClear(
-        spreadsheetId=spreadsheet_id,
-        body={"ranges": [f"'{name}'!A2:Z" for name in REPORT_DATA_SHEETS]},
-    ).execute()
     updates = [
         {
             "range": f"'{name}'!A1",
             "majorDimension": "ROWS",
-            "values": matrix,
+            "values": [["" if cell is None else cell for cell in row]
+                       + [""] * (len(matrix[0]) - len(row)) for row in matrix],
         }
         for name, matrix in values.items()
     ]
@@ -1520,6 +1562,22 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
         spreadsheetId=spreadsheet_id,
         body={"valueInputOption": "USER_ENTERED", "data": updates},
     ).execute()
+    trailing_ranges = []
+    for item in metadata.get("sheets", []):
+        properties = item["properties"]
+        name = properties["title"]
+        grid = properties.get("gridProperties", {})
+        if name in REPORT_DATA_SHEETS and grid.get("rowCount", 0) > len(values[name]):
+            column_count = grid.get("columnCount", 26)
+            letters = ""
+            while column_count:
+                column_count, remainder = divmod(column_count - 1, 26)
+                letters = chr(65 + remainder) + letters
+            trailing_ranges.append(f"'{name}'!A{len(values[name]) + 1}:{letters}")
+    if trailing_ranges:
+        sheets.spreadsheets().values().batchClear(
+            spreadsheetId=spreadsheet_id, body={"ranges": trailing_ranges}
+        ).execute()
     _configure_dashboard(
         sheets,
         spreadsheet_id,
@@ -1534,3 +1592,4 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
         ),
         "screenshot_url": screenshot_url,
     }
+

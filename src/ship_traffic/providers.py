@@ -112,21 +112,28 @@ class PortWatchProvider(Provider):
         "port": ("PortWatch_ports_database", "Daily_Ports_Data"),
     }
 
-    def __init__(self, timeout_seconds: int = 30, retries: int = 3) -> None:
+    def __init__(self, timeout_seconds: int = 30, retries: int = 6,
+                 acquisition_seconds: int = 1800) -> None:
         self.timeout_seconds = timeout_seconds
         self.retries = retries
+        self.acquisition_seconds = acquisition_seconds
+        self._deadline: float | None = None
 
     def _get_json(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
         request_url = f"{url}?{urllib.parse.urlencode(params)}"
         last_error: Exception | None = None
         for attempt in range(self.retries):
             try:
+                remaining = (self._deadline - time.monotonic()
+                             if self._deadline is not None else self.timeout_seconds)
+                if remaining <= 0:
+                    raise TimeoutError("PortWatch acquisition deadline exceeded")
                 request = urllib.request.Request(
                     request_url,
                     headers={"User-Agent": "ship-traffic-mvp/0.1"},
                 )
                 with urllib.request.urlopen(
-                    request, timeout=self.timeout_seconds
+                    request, timeout=min(self.timeout_seconds, remaining)
                 ) as response:
                     payload = json.loads(response.read().decode("utf-8"))
                 if "error" in payload:
@@ -135,8 +142,18 @@ class PortWatchProvider(Provider):
             except Exception as error:  # noqa: BLE001 - surfaced after bounded retries
                 last_error = error
                 if attempt + 1 < self.retries:
-                    time.sleep(2**attempt)
-        raise RuntimeError(f"PortWatch request failed: {last_error}") from last_error
+                    delay = min(2 ** (attempt + 1) + random.uniform(0, 1), 32)
+                    if self._deadline is not None:
+                        delay = min(delay, max(0, self._deadline - time.monotonic()))
+                    if delay <= 0:
+                        break
+                    time.sleep(delay)
+        # The endpoint and pagination offset identify the failing public layer
+        # without logging the full query string or any future sensitive inputs.
+        offset = params.get("resultOffset", 0)
+        raise RuntimeError(
+            f"PortWatch request failed for {url} (offset {offset}): {last_error}"
+        ) from last_error
 
     def _query(
         self, service: str, where: str, *, order_by: str | None = None
@@ -279,6 +296,8 @@ class PortWatchProvider(Provider):
     def fetch(
         self, areas: Iterable[Area], start_date: date, end_date: date
     ) -> list[DailyObservation]:
+        if self._deadline is None:
+            self._deadline = time.monotonic() + self.acquisition_seconds
         result: list[DailyObservation] = []
         grouped = {
             area_type: tuple(area for area in areas if area.type == area_type)
@@ -340,3 +359,4 @@ class AisProvider(Provider):
         raise NotImplementedError(
             "Configure a licensed AIS adapter to calculate exact parked-vessel metrics."
         )
+
