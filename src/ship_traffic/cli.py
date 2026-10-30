@@ -67,7 +67,24 @@ def run(args: argparse.Namespace) -> int:
     warning_count = 0
     report_date: date | None = None
     try:
-        observations = provider.fetch(config.areas, start_date, target_date)
+        failed_feeds: list[str] = []
+        if args.provider == "portwatch":
+            observations = []
+            for area_type in ("strait", "port"):
+                typed_areas = tuple(area for area in config.areas if area.type == area_type)
+                if not typed_areas:
+                    continue
+                try:
+                    typed_rows = provider.fetch(typed_areas, start_date, target_date)
+                    if not any(row.total is not None for row in typed_rows):
+                        raise RuntimeError("No usable observations")
+                    ids = {area.id for area in typed_areas}
+                    observations.extend(row for row in typed_rows if row.area_id in ids)
+                except RuntimeError as error:
+                    failed_feeds.append(area_type)
+                    print(f"WARNING: {area_type} feed unavailable: {error}", file=sys.stderr)
+        else:
+            observations = provider.fetch(config.areas, start_date, target_date)
         if not observations:
             raise RuntimeError("No usable observations were returned")
         if args.provider == "fixture":
@@ -117,7 +134,7 @@ def run(args: argparse.Namespace) -> int:
                     completed.isoformat(),
                     "success",
                     row_count,
-                    0,
+                    len(failed_feeds),
                     "No new PortWatch observation date; delivery skipped",
                 )
                 sync_run_log(
@@ -129,9 +146,10 @@ def run(args: argparse.Namespace) -> int:
                         "provider": args.provider,
                         "target_date": target_date.isoformat(),
                         "row_count": row_count,
-                        "warning_count": 0,
+                        "warning_count": len(failed_feeds),
                         "message": (
                             f"Observation date {report_date.isoformat()}; "
+                            f"unavailable feeds: {', '.join(failed_feeds) or 'none'}; "
                             "delivery skipped"
                         ),
                     }
@@ -141,6 +159,7 @@ def run(args: argparse.Namespace) -> int:
                     "report_date": report_date.isoformat(),
                     "previous_report_date": previous_report_date.isoformat(),
                     "delivered": False,
+                    "failed_feeds": failed_feeds,
                 }
                 result_path = _write_run_result(output_dir, run_result)
                 print(
@@ -157,7 +176,7 @@ def run(args: argparse.Namespace) -> int:
 
         if args.provider == "portwatch" and report_start_date < start_date:
             backfill = provider.fetch(
-                config.areas,
+                tuple(area for area in config.areas if area.type not in failed_feeds),
                 report_start_date,
                 start_date - timedelta(days=1),
             )
@@ -192,6 +211,11 @@ def run(args: argparse.Namespace) -> int:
             report_date,
             completed,
         )
+        payload["metadata"]["failed_feeds"] = failed_feeds
+        if failed_feeds:
+            payload["metadata"]["source_note"] += (
+                " Unavailable feeds this run: " + ", ".join(failed_feeds) + "."
+            )
         artifacts = write_outputs(project_root, output_dir, payload)
         result: dict[str, object] = {"run_id": run_id, "artifacts": artifacts}
         delivered = False
@@ -212,6 +236,7 @@ def run(args: argparse.Namespace) -> int:
                         f"Observation date {report_date.isoformat()}; coverage "
                         f"{payload['metadata']['observed_locations']}/"
                         f"{payload['metadata']['configured_locations']}; "
+                        f"unavailable feeds: {', '.join(failed_feeds) or 'none'}; "
                         "report delivered"
                     ),
                 }
@@ -227,6 +252,7 @@ def run(args: argparse.Namespace) -> int:
             "delivered": delivered,
             "observed_locations": payload["metadata"]["observed_locations"],
             "configured_locations": payload["metadata"]["configured_locations"],
+            "failed_feeds": failed_feeds,
         }
         artifacts["run_result"] = _write_run_result(output_dir, run_result)
         result.update(run_result)
@@ -277,4 +303,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

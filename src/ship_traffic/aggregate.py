@@ -68,7 +68,7 @@ def quality_rows(
     rows: list[dict[str, Any]], target_date: date, configured_area_ids: set[str]
 ) -> list[dict[str, Any]]:
     current = [row for row in rows if row["observation_date"] == target_date.isoformat()]
-    observed_ids = {row["area_id"] for row in current}
+    observed_ids = {row["area_id"] for row in current if row["total"] is not None}
     missing = configured_area_ids - observed_ids
     partial = [row["area_name"] for row in current if row["availability"] != "available" and row["availability"] != "fixture"]
     unknown_values = [

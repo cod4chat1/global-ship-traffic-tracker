@@ -187,8 +187,13 @@ class PortWatchProvider(Provider):
             payload = self._get_json(url, params)
             features = payload.get("features", [])
             rows.extend(feature.get("attributes", {}) for feature in features)
-            if not payload.get("exceededTransferLimit") or not features:
+            if not payload.get("exceededTransferLimit"):
                 break
+            if not features:
+                raise RuntimeError(
+                    f"PortWatch {service} returned an empty incomplete page "
+                    f"at offset {offset}"
+                )
             offset += len(features)
         return rows
 
@@ -316,6 +321,8 @@ class PortWatchProvider(Provider):
             for area_type in ("strait", "port")
         }
         for area_type, typed_areas in grouped.items():
+            if not typed_areas:
+                continue
             database_service, daily_service = self.datasets[area_type]
             resolved = self._resolve_source_ids(typed_areas, database_service)
             by_id = {area.id: area for area in typed_areas}
@@ -371,4 +378,3 @@ class AisProvider(Provider):
         raise NotImplementedError(
             "Configure a licensed AIS adapter to calculate exact parked-vessel metrics."
         )
-

@@ -101,6 +101,8 @@ jobs:
               "",
               `- Time: ${timestamp}`,
               `- New observation date: ${runResult.report_date}`,
+              `- Coverage: ${runResult.observed_locations}/${runResult.configured_locations} locations`,
+              `- Unavailable feeds: ${(runResult.failed_feeds || []).join(", ") || "none"}`,
               `- [Workflow run](${runUrl})`,
               `- [Ship traffic dashboard](${sheetUrl})`,
             ].join("\n");

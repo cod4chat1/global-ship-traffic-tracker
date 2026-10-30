@@ -155,7 +155,7 @@ def build_report_payload(
                     ),
                     "total": round(
                         sum(float(row["total"]) for row in observed), 2
-                    ),
+                    ) if observed else None,
                 }
             )
 
@@ -400,4 +400,3 @@ def write_outputs(
         artifacts["workbook"] = str(workbook)
     capture_screenshot(map_html, screenshot, script_root)
     return artifacts
-

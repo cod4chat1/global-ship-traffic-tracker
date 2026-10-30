@@ -200,7 +200,7 @@ class CoreTests(unittest.TestCase):
         merged = _merge_history_matrix(old, new)
         self.assertEqual(merged[1][4], 22)
         self.assertEqual(merged[2][4], 8)
-        self.assertEqual(_merge_history_matrix([["Date", "Area ID", "Name", "Region", "Total - calls"]],
+        self.assertEqual(_merge_history_matrix([["Date", "Area ID", "Name", "Region", "Total – calls"]],
                          [["Date", "Area ID", "Name", "Region", "Total - calls"]])[0][-1], "Total - calls")
         with self.assertRaisesRegex(RuntimeError, "headers changed"):
             _merge_history_matrix([["unexpected"]], new)
@@ -259,6 +259,47 @@ class CoreTests(unittest.TestCase):
             self.assertIsNone(missing["observation_date"])
             self.assertEqual(missing["availability"], "unavailable")
             self.assertIn('IF($A$10="","",', _dashboard_category_formula("H"))
+
+    def test_one_portwatch_feed_can_fail_without_fabricating_data(self):
+        config = load_config(ROOT / "config" / "areas.json")
+        report_date = date(2026, 7, 17)
+        for failed_type in ("strait", "port"):
+            with self.subTest(failed_type=failed_type), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                args = Namespace(provider="portwatch", date=report_date.isoformat(), history_days=1,
+                                 config=str(ROOT / "config" / "areas.json"),
+                                 database=str(root / "test.sqlite3"),
+                                 output_dir=str(root / "artifacts"), google=True)
+                def fetch(areas, start, end):
+                    if areas[0].type == failed_type:
+                        raise RuntimeError("feed unavailable")
+                    return [replace(row, source="IMF PortWatch") for row in
+                            FixtureProvider().fetch(areas, start, end)]
+                with (patch("ship_traffic.cli.PortWatchProvider.fetch", side_effect=fetch),
+                      patch("ship_traffic.cli.current_dashboard_date", return_value=date(2026, 7, 16)),
+                      patch("ship_traffic.cli.write_outputs", return_value={"screenshot": "test.png"}),
+                      patch("ship_traffic.cli.deliver", return_value={}) as deliver,
+                      patch("ship_traffic.cli.sync_run_log") as log):
+                    self.assertEqual(run(args), 0)
+                payload = deliver.call_args.args[0]
+                self.assertEqual(payload["metadata"]["failed_feeds"], [failed_type])
+                self.assertIn(failed_type, payload["metadata"]["source_note"])
+                failed = [x for x in payload["current_conditions"] if x["area_type"] == failed_type]
+                self.assertTrue(all(x["total"] is None and x["observation_date"] is None and x["availability"] == "unavailable" for x in failed))
+                self.assertTrue(all(x["total"] is None for x in payload["regional_summary"] if x["area_type"] == failed_type))
+                self.assertIn(failed_type, log.call_args.args[0]["message"])
+
+    def test_both_failed_portwatch_feeds_do_not_deliver(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = Namespace(provider="portwatch", date="2026-07-17", history_days=1,
+                             config=str(ROOT / "config" / "areas.json"), database=str(root / "db"),
+                             output_dir=str(root / "artifacts"), google=True)
+            with (patch("ship_traffic.cli.PortWatchProvider.fetch", side_effect=RuntimeError("unavailable")),
+                  patch("ship_traffic.cli.deliver") as deliver,
+                  patch("ship_traffic.cli.sync_run_log")):
+                self.assertEqual(run(args), 1)
+                deliver.assert_not_called()
 
     def test_remote_log_failure_does_not_hide_pipeline_failure(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -463,6 +504,24 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(call.call_count, 1)
         sleep.assert_not_called()
 
+    def test_portwatch_pagination_rejects_empty_incomplete_page(self):
+        provider = PortWatchProvider()
+        with patch.object(provider, "_get_json", return_value={
+            "features": [], "exceededTransferLimit": True
+        }) as get_json:
+            with self.assertRaisesRegex(RuntimeError, "empty incomplete page at offset 0"):
+                provider._query("daily", "1=1")
+        get_json.assert_called_once()
+
+    def test_portwatch_pagination_accepts_final_empty_or_nonempty_page(self):
+        provider = PortWatchProvider()
+        first = {"features": [{"attributes": {"id": 1}}], "exceededTransferLimit": True}
+        for final, expected in (({"features": []}, [{"id": 1}]),
+                                ({"features": [{"attributes": {"id": 2}}]}, [{"id": 1}, {"id": 2}])):
+            with self.subTest(final=final), patch.object(provider, "_get_json", side_effect=[first, final]) as get_json:
+                self.assertEqual(provider._query("daily", "1=1"), expected)
+                self.assertEqual(get_json.call_args_list[1].args[1]["resultOffset"], 1)
+
     def test_portwatch_rejects_ambiguous_shortest_contains_match(self):
         provider = PortWatchProvider()
         area = Area(
@@ -555,4 +614,3 @@ class CoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -282,14 +282,14 @@ def _dashboard_category_formula(value_column: str) -> str:
 
 def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     strait_headers = [
-        "Date", "Area ID", "Strait", "Region", "Total crossings", "Bulk - O&G",
-        "Bulk - non-O&G", "Container", "Other cargo", "Others", "Unknown",
+        "Date", "Area ID", "Strait", "Region", "Total crossings", "Bulk – O&G",
+        "Bulk – non-O&G", "Container", "Other cargo", "Others", "Unknown",
         "7d avg", "30d avg", "Change vs 7d", "Change vs 30d", "Availability",
         "Recent status", "Source", "Source URL",
     ]
     port_headers = [
-        "Date", "Area ID", "Port", "Region", "Total activity", "Bulk - O&G",
-        "Bulk - non-O&G", "Container", "Other cargo", "Others", "Unknown",
+        "Date", "Area ID", "Port", "Region", "Total activity", "Bulk – O&G",
+        "Bulk – non-O&G", "Container", "Other cargo", "Others", "Unknown",
         "Imports (t)", "Exports (t)", "7d avg", "30d avg", "Change vs 7d",
         "Change vs 30d", "Availability", "Recent status", "Source", "Source URL",
     ]
@@ -322,7 +322,7 @@ def _sheet_values(payload: dict[str, Any]) -> dict[str, list[list[Any]]]:
     )
     dashboard_headers = [
         "Date", "Area type", "Region", "Area", "Actual", "7-day average",
-        "30-day average", "Bulk - O&G", "Bulk - non-O&G", "Container",
+        "30-day average", "Bulk – O&G", "Bulk – non-O&G", "Container",
         "Other cargo", "Unknown", "Recent status",
     ]
     dashboard_rows = [
@@ -467,7 +467,7 @@ def _merge_history_matrix(existing: list[list[Any]], incoming: list[list[Any]]) 
     if not existing:
         return incoming
     def canonical_header(value: Any) -> str:
-        return str(value).replace("-", "-").replace("-", "-")
+        return str(value).replace("–", "-").replace("—", "-")
     if ([canonical_header(v) for v in existing[0][:len(incoming[0])]]
             != [canonical_header(v) for v in incoming[0]]):
         raise RuntimeError("Historical sheet headers changed; delivery stopped to preserve data")
@@ -683,12 +683,12 @@ def _configure_dashboard(
         [],
         [f"Coverage on {payload['metadata']['target_date']}: "
          f"{payload['metadata']['observed_locations']}/{payload['metadata']['configured_locations']} locations. "
-         "Totals include observed locations only. PortWatch provides aggregate vessel activity; exact berth and anchorage counts require licensed AIS."],
+         f"Totals include observed locations only. {payload['metadata']['source_note']}"],
         [],
         ["Vessel type breakdown"],
         ["Vessel type", "Actual", "Share of total"],
-        ["Bulk - oil & gas", _dashboard_category_formula("H"), '=IFERROR(B19/$A$10,"")'],
-        ["Bulk - non-oil & gas", _dashboard_category_formula("I"), '=IFERROR(B20/$A$10,"")'],
+        ["Bulk – oil & gas", _dashboard_category_formula("H"), '=IFERROR(B19/$A$10,"")'],
+        ["Bulk – non-oil & gas", _dashboard_category_formula("I"), '=IFERROR(B20/$A$10,"")'],
         ["Container", _dashboard_category_formula("J"), '=IFERROR(B21/$A$10,"")'],
         ["Other cargo", _dashboard_category_formula("K"), '=IFERROR(B22/$A$10,"")'],
         ["Other / unknown", '=IF($A$10="","",MAX(0,$A$10-SUM($B$19:$B$22)))', '=IFERROR(B23/$A$10,"")'],
@@ -1592,4 +1592,3 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
         ),
         "screenshot_url": screenshot_url,
     }
-
