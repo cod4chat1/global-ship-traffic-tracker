@@ -6,6 +6,7 @@ import random
 import re
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timedelta, timezone
@@ -19,6 +20,10 @@ PORTWATCH_ROOT = (
 )
 PORTWATCH_SOURCE = "IMF PortWatch"
 PORTWATCH_SOURCE_URL = "https://portwatch.imf.org/"
+
+
+class PortWatchQueryRejected(RuntimeError):
+    """ArcGIS rejected the query; the upstream cause may be transient or invalid input."""
 
 
 class Provider(ABC):
@@ -137,10 +142,16 @@ class PortWatchProvider(Provider):
                 ) as response:
                     payload = json.loads(response.read().decode("utf-8"))
                 if "error" in payload:
+                    if payload["error"].get("code") == 400:
+                        raise PortWatchQueryRejected(str(payload["error"]))
                     raise RuntimeError(str(payload["error"]))
                 return payload
             except Exception as error:  # noqa: BLE001 - surfaced after bounded retries
                 last_error = error
+                if isinstance(error, PortWatchQueryRejected) or (
+                    isinstance(error, urllib.error.HTTPError) and error.code == 400
+                ):
+                    break
                 if attempt + 1 < self.retries:
                     delay = min(2 ** (attempt + 1) + random.uniform(0, 1), 32)
                     if self._deadline is not None:
@@ -152,7 +163,8 @@ class PortWatchProvider(Provider):
         # without logging the full query string or any future sensitive inputs.
         offset = params.get("resultOffset", 0)
         raise RuntimeError(
-            f"PortWatch request failed for {url} (offset {offset}): {last_error}"
+            f"PortWatch request failed for {url} (offset {offset}); "
+            f"no report was published: {last_error}"
         ) from last_error
 
     def _query(

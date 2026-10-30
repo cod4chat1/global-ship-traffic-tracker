@@ -450,6 +450,19 @@ class CoreTests(unittest.TestCase):
                 provider._get_json("https://example.test/query", {})
         call.assert_not_called()
 
+    def test_portwatch_400_does_not_retry_unchanged_query(self):
+        provider = PortWatchProvider(retries=6)
+        response = unittest.mock.MagicMock()
+        response.__enter__.return_value.read.return_value = (
+            b'{"error":{"code":400,"message":"Invalid URL"}}'
+        )
+        with (patch("urllib.request.urlopen", return_value=response) as call,
+              patch("time.sleep") as sleep):
+            with self.assertRaisesRegex(RuntimeError, "no report was published"):
+                provider._get_json("https://example.test/query", {})
+        self.assertEqual(call.call_count, 1)
+        sleep.assert_not_called()
+
     def test_portwatch_rejects_ambiguous_shortest_contains_match(self):
         provider = PortWatchProvider()
         area = Area(
