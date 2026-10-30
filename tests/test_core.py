@@ -543,6 +543,23 @@ class CoreTests(unittest.TestCase):
         ):
             self.assertEqual(provider._resolve_source_ids((area,), "service"), {})
 
+    def test_portwatch_rejects_multiple_partial_matches_even_if_one_is_shorter(self):
+        provider = PortWatchProvider()
+        area = Area(id="x", name="Alpha", source_name="Alpha", type="port",
+                    region="Asia", lat=0, lon=0)
+        with patch.object(provider, "_query", return_value=[
+            {"portid": "1", "portname": "Alpha Port"},
+            {"portid": "2", "portname": "Alpha Offshore Terminal"},
+        ]):
+            self.assertEqual(provider._resolve_source_ids((area,), "service"), {})
+
+    def test_portwatch_rejects_source_id_shared_by_locations(self):
+        provider = PortWatchProvider()
+        areas = (Area(id="a", name="Alpha", source_name="Alpha", type="port", region="Asia", lat=0, lon=0),
+                 Area(id="b", name="Alpha Port", source_name="Alpha Port", type="port", region="Asia", lat=0, lon=0))
+        with patch.object(provider, "_query", return_value=[{"portid": "1", "portname": "Alpha Port"}]):
+            self.assertEqual(provider._resolve_source_ids(areas, "service"), {})
+
     def test_google_dashboard_data_keeps_selector_formulas(self):
         row = {
             "observation_date": "2026-07-17",

@@ -220,13 +220,15 @@ class PortWatchProvider(Provider):
                 resolved[area.id] = exact[0][0]
                 continue
             candidates = exact or contains
-            if not candidates:
-                continue
-            ranked = sorted(candidates, key=lambda item: (len(item[1]), item[1]))
-            shortest_length = len(ranked[0][1])
-            shortest = [item for item in ranked if len(item[1]) == shortest_length]
-            if len(shortest) == 1:
-                resolved[area.id] = shortest[0][0]
+            if len(candidates) == 1:
+                resolved[area.id] = candidates[0][0]
+        # A source row cannot stand for two configured locations without an
+        # explicitly verified combined-scope rule. No such rule exists here.
+        counts: dict[str, int] = {}
+        for source_id in resolved.values():
+            counts[source_id] = counts.get(source_id, 0) + 1
+        resolved = {area_id: source_id for area_id, source_id in resolved.items()
+                    if counts[source_id] == 1}
         return resolved
 
     def resolution_report(self, areas: Iterable[Area]) -> list[dict[str, Any]]:
