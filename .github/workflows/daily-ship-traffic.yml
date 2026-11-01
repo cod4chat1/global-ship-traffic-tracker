@@ -59,6 +59,10 @@ jobs:
         if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
         run: python -m ship_traffic.los_angeles_monthly
 
+      - name: Refresh Europe quarterly snapshot
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        run: python -m ship_traffic.europe_quarterly
+
       - name: Keep run artifacts
         if: always()
         uses: actions/upload-artifact@v4
