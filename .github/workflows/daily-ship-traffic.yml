@@ -40,6 +40,7 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Verify tracker
+        id: verify
         run: python -m unittest discover -s tests -v
 
       - name: Update Google Sheet and Drive snapshot
@@ -49,6 +50,10 @@ jobs:
           --date "$(date -u +%F)"
           --history-days 45
           --google
+
+      - name: Refresh Singapore monthly snapshot
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        run: python -m ship_traffic.singapore_monthly
 
       - name: Keep run artifacts
         if: always()
