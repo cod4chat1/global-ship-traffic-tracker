@@ -93,6 +93,7 @@ class Repository:
                 exports_tons=excluded.exports_tons,
                 availability=excluded.availability,
                 source_url=excluded.source_url
+            WHERE excluded.total IS NOT NULL OR daily_observations.total IS NULL
             """,
             rows,
         )
@@ -112,6 +113,39 @@ class Repository:
             parameters.append(source)
         sql += " ORDER BY observation_date, area_type, area_name"
         rows = self.connection.execute(sql, parameters).fetchall()
+        return [dict(row) for row in rows]
+
+    def last_good_history(
+        self, area_types: Iterable[str], end_date: str, *, source: str,
+        days: int = 45,
+    ) -> list[dict]:
+        """Read each failed feed's real last-good window, without retimestamping.
+
+        Stored history is never deleted. Windows are relative to each location's
+        own latest usable observation, not a different feed's report date.
+        """
+        types = tuple(area_types)
+        if not types:
+            return []
+        placeholders = ",".join("?" for _ in types)
+        rows = self.connection.execute(
+            f"""
+            WITH latest AS (
+                SELECT area_id, MAX(observation_date) AS last_date
+                FROM daily_observations
+                WHERE area_type IN ({placeholders}) AND source = ?
+                  AND observation_date <= ? AND total IS NOT NULL
+                GROUP BY area_id
+            )
+            SELECT d.* FROM daily_observations d
+            JOIN latest l ON d.area_id = l.area_id
+            WHERE d.source = ?
+              AND d.observation_date BETWEEN date(l.last_date, ?)
+                                         AND l.last_date
+            ORDER BY d.observation_date, d.area_id
+            """,
+            (*types, source, end_date, source, f"-{max(1, days) - 1} days"),
+        ).fetchall()
         return [dict(row) for row in rows]
 
     def observation_count(self) -> int:
@@ -158,4 +192,4 @@ class Repository:
             "SELECT * FROM run_log ORDER BY started_at DESC LIMIT 100"
         ).fetchall()
         return [dict(row) for row in rows]
-
+

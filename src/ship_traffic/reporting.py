@@ -54,6 +54,8 @@ def build_report_payload(
     runs: list[dict[str, Any]],
     target_date: date,
     generated_at: datetime,
+    *, failed_feeds: list[str] | tuple[str, ...] = (),
+    fresh_keys: set[tuple[str, str, str]] | None = None,
 ) -> dict[str, Any]:
     area_by_id = {area.id: area for area in config.areas}
     region_by_area = {area.id: area.region for area in config.areas}
@@ -66,9 +68,15 @@ def build_report_payload(
     ports = [row for row in rows if row["area_type"] == "port"]
     current_straits = [
         row for row in straits if row["observation_date"] == target_date.isoformat()
+        and row["area_type"] not in failed_feeds
+        and (fresh_keys is None or
+             (row["area_id"], row["observation_date"], row["source"]) in fresh_keys)
     ]
     current_ports = [
         row for row in ports if row["observation_date"] == target_date.isoformat()
+        and row["area_type"] not in failed_feeds
+        and (fresh_keys is None or
+             (row["area_id"], row["observation_date"], row["source"]) in fresh_keys)
     ]
     current_by_id = {
         row["area_id"]: row for row in current_straits + current_ports
@@ -79,10 +87,18 @@ def build_report_payload(
             {"date": row["observation_date"], "total": row["total"]}
         )
 
+    last_good_by_id: dict[str, dict[str, Any]] = {}
+    for row in sorted(rows, key=lambda item: item["observation_date"]):
+        if row["total"] is not None:
+            last_good_by_id[row["area_id"]] = row
+
     current_conditions: list[dict[str, Any]] = []
     map_data: list[dict[str, Any]] = []
     for area in config.areas:
         row = current_by_id.get(area.id, {})
+        last_good_only = not row or row.get("total") is None
+        if last_good_only:
+            row = last_good_by_id.get(area.id, {})
         condition = {
             "area_id": area.id,
             "area_name": area.name,
@@ -114,6 +130,13 @@ def build_report_payload(
             "source": row.get("source", "IMF PortWatch"),
             "source_url": row.get("source_url", "https://portwatch.imf.org/"),
         }
+        if last_good_only and row:
+            condition["availability"] = "last_good_only"
+            condition["recent_status"] = (
+                "Feed unavailable this run; last good observation"
+                if area.type in failed_feeds
+                else "No usable observation received this run; last good observation"
+            )
         current_conditions.append(condition)
         map_data.append(
             {
@@ -163,6 +186,7 @@ def build_report_payload(
         row
         for row in current_conditions
         if row["change_30d"] is not None
+        and row["availability"] != "last_good_only"
     ]
     top_movers = sorted(
         movable,
@@ -400,3 +424,4 @@ def write_outputs(
         artifacts["workbook"] = str(workbook)
     capture_screenshot(map_html, screenshot, script_root)
     return artifacts
+

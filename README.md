@@ -176,3 +176,44 @@ Implement `Provider.fetch()` in `src/ship_traffic/providers.py` for a licensed A
 - count crossings from line-side transitions rather than point presence;
 - return `unknown` separately; and
 - comply with the provider’s storage and redistribution licence.
+
+
+## Explicit weekly official-export fallback
+
+A weekly runner may add `--csv-fallback` to the existing PortWatch CLI command.
+This does not create a scheduler or enable bulk retrieval on ordinary daily runs.
+After a primary API acquisition failure, it streams the official IMF cached CSV,
+validates all records and configured identities, and uses only observations in the
+requested date window. Daily observation dates remain distinct from weekly file
+publication and retrieval timestamps. Attribution: Sources: UN Global Platform;
+IMF PortWatch (https://portwatch.imf.org/). IMF terms apply; this is not a Creative
+Commons licence declaration.
+
+Limits are 64 MiB for chokepoints and 1 GiB for the full ports export, with a
+120-second acquisition deadline and 300-second validation deadline per feed.
+Validated exports are cached under the SQLite directory's `official_exports/`
+for seven days, with SHA256 integrity checks. Backfill within a run reuses the
+same parsed export. Fresh hosted runners need their existing state/cache restored
+if operators want cross-run cache reuse; the code does not assume such restoration.
+
+A complete but old export is an archive, not current data. If the usable feed
+advances while another feed is unavailable, Google publication requires bounded,
+strictly validated readback of the failed feed's accepted history. The snapshot
+is rechecked before report writes; changed or incomplete history holds publication.
+Retained observations keep their actual dates, are labelled last-good-only, and
+are excluded from current coverage and movers. No missing value becomes zero.
+If both acquisition paths fail, or no newer observation date exists while a feed
+remains unavailable, the run records a failure rather than a routine no-change.
+
+Validation evidence on 1 November 2026: the official chokepoint export contains
+79,940 records through 25 October for all 28 source identities, including all 12
+configured straits. The complete ports archive contains 5,703,530 rows through
+24 July, older than the tracker's accepted 16 October port observations; it must
+not replace those accepted values. These are observation cutoffs, not today's
+vessel activity. No licensed vessel-level parked/anchored counts are inferred.
+
+Export acceptance also requires a matching-generation official row count; older
+exports without that completeness evidence remain unsuitable for publication.
+Announced HTTP lengths are checked. Partial-history publication is verified by
+bounded post-write date/value/status readback; an uncertain result is not retried.
+The old port archive also fails strict Ningbo–Zhoushan identity resolution.

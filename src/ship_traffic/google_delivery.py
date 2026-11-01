@@ -683,7 +683,8 @@ def _configure_dashboard(
         [],
         [f"Coverage on {payload['metadata']['target_date']}: "
          f"{payload['metadata']['observed_locations']}/{payload['metadata']['configured_locations']} locations. "
-         f"Totals include observed locations only. {payload['metadata']['source_note']}"],
+         f"Totals include observed locations only. {payload['metadata']['source_note']} "
+         "Blank port gauges mean unavailable on the report date; retained values and their true dates are in Current_Conditions and Map_Data."],
         [],
         ["Vessel type breakdown"],
         ["Vessel type", "Actual", "Share of total"],
@@ -1474,6 +1475,47 @@ def _configure_dashboard(
         ).execute()
 
 
+def _verify_recovered_publication(sheets, spreadsheet_id, payload, values):
+    """Read back overwritten retained fields; never retry an uncertain publication."""
+    names = ("Current_Conditions", "Map_Data")
+    ranges = ["'Dashboard'!B7", *[
+        f"'{name}'!A1:{'T' if name == 'Current_Conditions' else 'AC'}{len(values[name])}"
+        for name in names]]
+    try:
+        result = sheets.spreadsheets().values().batchGet(
+            spreadsheetId=spreadsheet_id, ranges=ranges,
+            valueRenderOption="UNFORMATTED_VALUE", dateTimeRenderOption="FORMATTED_STRING",
+        ).execute().get("valueRanges", [])
+        if len(result) != 3 or result[0].get("values") != [[payload["metadata"]["target_date"]]]:
+            raise ValueError("dashboard date mismatch")
+        failed = set(payload["metadata"]["history_recovery"]["feed_types"])
+        # Compare identity, actual date, value, status and availability, including zero vs missing.
+        for name, response in zip(names, result[1:]):
+            expected = values[name]
+            actual = response.get("values", [])
+            if not actual or actual[0] != expected[0]:
+                raise ValueError(f"{name} header mismatch")
+            id_col, type_col, cols = ((1, 3, (0, 1, 5, 10, 11)) if name == "Current_Conditions"
+                                      else (0, 2, (0, 11, 12, 17, 25)))
+            by_id = {}
+            for row in actual[1:]:
+                identity = row[id_col] if len(row) > id_col else None
+                if identity in by_id:
+                    raise ValueError(f"{name} duplicate identity")
+                by_id[identity] = row
+            def cell(row, index):
+                value = row[index] if len(row) > index else ""
+                return "" if value is None else value
+            for row in expected[1:]:
+                if str(row[type_col]).lower() not in failed:
+                    continue
+                found = by_id.get(row[id_col])
+                if found is None or any(cell(found, i) != cell(row, i) for i in cols):
+                    raise ValueError(f"{name} retained observation mismatch")
+    except Exception as error:
+        raise RuntimeError(f"Publication uncertain: retained-value readback failed; do not retry automatically: {error}") from error
+
+
 def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, str]:
     try:
         from googleapiclient.discovery import build
@@ -1489,6 +1531,11 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
     credentials = _credentials()
     sheets = build("sheets", "v4", credentials=credentials, cache_discovery=False)
     drive = build("drive", "v3", credentials=credentials, cache_discovery=False)
+    recovery = payload.get("metadata", {}).get("history_recovery")
+    if recovery:
+        from .sheet_history import verify_snapshot_unchanged
+        # Re-read authoritative history before any report data/layout mutation.
+        verify_snapshot_unchanged(recovery)
     metadata = _ensure_tabs(sheets, spreadsheet_id)
 
     values = _sheet_values(payload)
@@ -1585,6 +1632,8 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
         payload,
         latest_helper_row,
     )
+    if recovery:
+        _verify_recovered_publication(sheets, spreadsheet_id, payload, values)
     screenshot_url = _upload_screenshot(drive, screenshot_path)
     return {
         "spreadsheet_url": (
@@ -1592,3 +1641,4 @@ def deliver(payload: dict[str, Any], screenshot_path: str | Path) -> dict[str, s
         ),
         "screenshot_url": screenshot_url,
     }
+

@@ -280,13 +280,10 @@ class CoreTests(unittest.TestCase):
                       patch("ship_traffic.cli.write_outputs", return_value={"screenshot": "test.png"}),
                       patch("ship_traffic.cli.deliver", return_value={}) as deliver,
                       patch("ship_traffic.cli.sync_run_log") as log):
-                    self.assertEqual(run(args), 0)
-                payload = deliver.call_args.args[0]
-                self.assertEqual(payload["metadata"]["failed_feeds"], [failed_type])
-                self.assertIn(failed_type, payload["metadata"]["source_note"])
-                failed = [x for x in payload["current_conditions"] if x["area_type"] == failed_type]
-                self.assertTrue(all(x["total"] is None and x["observation_date"] is None and x["availability"] == "unavailable" for x in failed))
-                self.assertTrue(all(x["total"] is None for x in payload["regional_summary"] if x["area_type"] == failed_type))
+                    self.assertEqual(run(args), 1)
+                deliver.assert_not_called()
+                self.assertEqual(log.call_args.args[0]["status"], "failed")
+                self.assertIn("publication held", log.call_args.args[0]["message"])
                 self.assertIn(failed_type, log.call_args.args[0]["message"])
 
     def test_both_failed_portwatch_feeds_do_not_deliver(self):
@@ -631,3 +628,4 @@ class CoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -3,7 +3,13 @@ name: Daily ship traffic update
 "on":
   schedule:
     - cron: "0 0 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      csv_fallback:
+        description: Use official cached CSV if the primary API fails
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -50,6 +56,7 @@ jobs:
           --date "$(date -u +%F)"
           --history-days 45
           --google
+          ${{ github.event_name == 'workflow_dispatch' && inputs.csv_fallback && '--csv-fallback' || '' }}
 
       - name: Refresh Singapore monthly snapshot
         if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
@@ -158,3 +165,4 @@ jobs:
                 labels: ["daily-update-alerts"],
               });
             }
+
