@@ -70,7 +70,15 @@ def quality_rows(
     current = [row for row in rows if row["observation_date"] == target_date.isoformat()]
     observed_ids = {row["area_id"] for row in current if row["total"] is not None}
     missing = configured_area_ids - observed_ids
-    partial = [row["area_name"] for row in current if row["availability"] != "available" and row["availability"] != "fixture"]
+    # Missing configured locations are unavailable too, even when their retained
+    # history predates this report or has been excluded from fresh coverage.
+    partial_ids = missing | {
+        row["area_id"] for row in current
+        if row["area_id"] in configured_area_ids
+        and row["availability"] not in {"available", "fixture"}
+    }
+    names = {row["area_id"]: row["area_name"] for row in rows}
+    partial = [names.get(area_id, area_id) for area_id in sorted(partial_ids)]
     unknown_values = [
         row["unknown"] / row["total"]
         for row in current
@@ -139,3 +147,4 @@ def quality_rows(
             "detail": "Requires licensed vessel-level AIS positions and port geofences",
         },
     ]
+
