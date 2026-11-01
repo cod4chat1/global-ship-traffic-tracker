@@ -1,0 +1,4 @@
+Source: Port of Los Angeles, 2026 Port of Los Angeles Container Statistics.
+URL: https://portoflosangeles.org/business/statistics/container-statistics/historical-teu-statistics-2026
+Downloaded: 2026-11-01; 134310 bytes; SHA-256 a32c46a646ab42c491301eaeb1dbf1257f36344c8505fce93e21e6cd6a9335c0.
+Credit: Port of Los Angeles. The port describes its statistics as free and requests attribution: https://portoflosangeles.org/business/statistics
